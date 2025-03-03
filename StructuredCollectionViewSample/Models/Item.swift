@@ -11,12 +11,12 @@ import UIKit
 struct Category: Hashable {
     var id: UUID
     var name: String
-    var items: [Item]
+    var subCategories: [SubCategory]
 
-    init(name: String, items: [Item]) {
+    init(name: String, subCategories: [SubCategory]) {
         self.id = UUID()
         self.name = name
-        self.items = items
+        self.subCategories = subCategories
     }
 
     func hash(into hasher: inout Hasher) {

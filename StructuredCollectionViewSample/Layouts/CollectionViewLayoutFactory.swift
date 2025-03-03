@@ -10,11 +10,11 @@ import UIKit
 /// コレクションビューのレイアウトを生成するファクトリークラス
 class CollectionViewLayoutFactory {
     
-    /// カテゴリ表示用のCompositionalLayoutを作成する
+    /// 多階層カテゴリ表示用のCompositionalLayoutを作成する
     /// - Returns: 設定済みのUICollectionViewLayout
     static func createCompositionalLayout() -> UICollectionViewLayout {
         let layout = UICollectionViewCompositionalLayout { (sectionIndex, layoutEnvironment) -> NSCollectionLayoutSection? in
-            // カテゴリセクションのレイアウトを作成
+            // 全カテゴリ共通のレイアウトを作成
             return Self.createCategorySection()
         }
         
@@ -27,28 +27,59 @@ class CollectionViewLayoutFactory {
     /// カテゴリセクションのレイアウトを作成
     /// - Returns: NSCollectionLayoutSection
     static func createCategorySection() -> NSCollectionLayoutSection {
-        // アイテムサイズ定義
-        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(0.5),
-                                             heightDimension: .fractionalHeight(1.0))
+        // 2つの異なるアイテム種類を持つセクションを作成
+        
+        // サブカテゴリのアイテムレイアウト（幅いっぱい）
+        let subCategoryItem = NSCollectionLayoutItem(
+            layoutSize: NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1.0),
+                heightDimension: .estimated(44)
+            )
+        )
+        subCategoryItem.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 0, trailing: 8)
+        
+        // サブカテゴリのグループ
+        let subCategoryGroup = NSCollectionLayoutGroup.horizontal(
+            layoutSize: NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1.0),
+                heightDimension: .estimated(44)
+            ),
+            subitems: [subCategoryItem]
+        )
+        
+        // アイテムのレイアウト（2つのアイテムを横に並べる）
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(0.5),
+            heightDimension: .fractionalHeight(1.0)
+        )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
         item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
         
-        // グループサイズ定義
-        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0),
-                                              heightDimension: .fractionalWidth(0.5))
-        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+        // アイテムのグループ（2つ横並び）
+        let itemGroupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .absolute(100)
+        )
+        let itemGroup = NSCollectionLayoutGroup.horizontal(
+            layoutSize: itemGroupSize,
+            subitem: item,
+            count: 2
+        )
         
-        // セクション定義
-        let section = NSCollectionLayoutSection(group: group)
+        // セクション定義（サブカテゴリの後にアイテムグループを表示）
+        let section = NSCollectionLayoutSection(group: itemGroup)
         section.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
         
         // セクションヘッダー追加
-        let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0),
-                                              heightDimension: .estimated(44))
+        let headerSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .estimated(44)
+        )
         let header = NSCollectionLayoutBoundarySupplementaryItem(
             layoutSize: headerSize,
             elementKind: UICollectionView.elementKindSectionHeader,
-            alignment: .top)
+            alignment: .top
+        )
         section.boundarySupplementaryItems = [header]
         
         return section

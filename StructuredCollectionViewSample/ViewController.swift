@@ -35,7 +35,7 @@ class ViewController: UIViewController {
     
     // ナビゲーションバーの設定
     private func setupNavigationBar() {
-        title = "カテゴリ表示サンプル"
+        title = "多階層カテゴリサンプル"
         
         // リロードボタンを追加
         let reloadButton = UIBarButtonItem(
@@ -48,27 +48,55 @@ class ViewController: UIViewController {
     
     // データをリロードするアクション
     @objc private func reloadData() {
-        // 食べ物カテゴリのアイテムを更新
-        let newFoodItems = [
-            Item(title: "いちご", color: .systemRed),
-            Item(title: "メロン", color: .systemGreen),
-            Item(title: "パイナップル", color: .systemYellow),
-            Item(title: "すいか", color: .systemGreen),
-            Item(title: "キウイ", color: .systemGreen)
+        // 新しいカテゴリとサブカテゴリ、アイテムを作成
+        
+        // 家電カテゴリ
+        let kitchenItems = [
+            Item(title: "冷蔵庫", color: .systemBlue),
+            Item(title: "電子レンジ", color: .systemGray),
+            Item(title: "トースター", color: .systemOrange)
         ]
         
-        let foodCategory = Category(name: "果物", items: newFoodItems)
-        let hobbiesItems = [
-            Item(title: "読書", color: .systemBrown),
-            Item(title: "ゲーム", color: .systemBlue),
-            Item(title: "映画鑑賞", color: .systemRed),
-            Item(title: "料理", color: .systemOrange)
+        let avItems = [
+            Item(title: "テレビ", color: .systemPurple),
+            Item(title: "ゲーム機", color: .systemGreen),
+            Item(title: "スピーカー", color: .systemRed)
         ]
         
-        let hobbiesCategory = Category(name: "趣味", items: hobbiesItems)
+        let applianceSubs = [
+            SubCategory(name: "キッチン家電", items: kitchenItems),
+            SubCategory(name: "AV機器", items: avItems)
+        ]
         
-        // 新しいカテゴリを設定してリロード
-        collectionViewDataSource.reloadCategories([foodCategory, hobbiesCategory])
+        // 季節カテゴリ
+        let springItems = [
+            Item(title: "桜", color: .systemPink),
+            Item(title: "チューリップ", color: .systemRed)
+        ]
+        
+        let summerItems = [
+            Item(title: "ひまわり", color: .systemYellow),
+            Item(title: "海", color: .systemBlue)
+        ]
+        
+        let fallItems = [
+            Item(title: "紅葉", color: .systemOrange),
+            Item(title: "きのこ", color: .systemBrown)
+        ]
+        
+        let seasonSubs = [
+            SubCategory(name: "春", items: springItems),
+            SubCategory(name: "夏", items: summerItems),
+            SubCategory(name: "秋", items: fallItems)
+        ]
+        
+        // 新しいカテゴリを作成してリロード
+        let categories = [
+            Category(name: "家電製品", subCategories: applianceSubs),
+            Category(name: "季節", subCategories: seasonSubs)
+        ]
+        
+        collectionViewDataSource.reloadCategories(categories)
     }
 }
 

@@ -7,23 +7,31 @@
 
 import Foundation
 
-// セクションを表すモデル
+/// セクションを表すモデル
 struct Section: Hashable {
-    // セクションのカテゴリ
+    /// セクションのID（一意な識別子）
+    let id = UUID()
+    
+    /// セクションのカテゴリ
     let category: Category
     
-    // セクションのタイトル（カテゴリ名）
+    /// セクションのタイトル（カテゴリ名）
     var title: String {
         return category.name
     }
     
-    // Equatableの実装
-    static func == (lhs: Section, rhs: Section) -> Bool {
-        return lhs.category.id == rhs.category.id
+    /// 初期化
+    init(category: Category) {
+        self.category = category
     }
     
-    // Hashableの実装
+    // MARK: - Equatableの実装
+    static func == (lhs: Section, rhs: Section) -> Bool {
+        return lhs.id == rhs.id
+    }
+    
+    // MARK: - Hashableの実装
     func hash(into hasher: inout Hasher) {
-        hasher.combine(category.id)
+        hasher.combine(id)
     }
 } 

@@ -12,11 +12,12 @@ class CollectionViewDataSource {
     
     /// データソースの識別子
     enum CellReuseID: String {
-        case basic = "BasicCell"
+        case subCategory = "SubCategoryCell"
+        case item = "ItemCell"
     }
     
     /// DiffableDataSource
-    private(set) var dataSource: UICollectionViewDiffableDataSource<Section, Item>!
+    private(set) var dataSource: UICollectionViewDiffableDataSource<Section, CellItem>!
     
     /// カテゴリのリスト
     private var categories: [Category] = []
@@ -31,7 +32,8 @@ class CollectionViewDataSource {
     /// - Parameter collectionView: 設定対象のコレクションビュー
     private func configureDataSource(collectionView: UICollectionView) {
         // セルの登録
-        collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.basic.rawValue)
+        collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.subCategory.rawValue)
+        collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.item.rawValue)
         
         // ヘッダーの登録
         collectionView.register(UICollectionReusableView.self,
@@ -39,28 +41,50 @@ class CollectionViewDataSource {
                                withReuseIdentifier: "HeaderView")
         
         // セルプロバイダーの設定
-        dataSource = UICollectionViewDiffableDataSource<Section, Item>(collectionView: collectionView) {
-            (collectionView, indexPath, item) -> UICollectionViewCell? in
+        dataSource = UICollectionViewDiffableDataSource<Section, CellItem>(collectionView: collectionView) { 
+            [weak self] (collectionView: UICollectionView, indexPath: IndexPath, cellItem: CellItem) -> UICollectionViewCell? in
             
-            guard let cell = collectionView.dequeueReusableCell(
-                withReuseIdentifier: CellReuseID.basic.rawValue,
-                for: indexPath) as? UICollectionViewCell else {
-                    return nil
+            switch cellItem {
+            case .subCategory(let subCategory):
+                guard let cell = collectionView.dequeueReusableCell(
+                    withReuseIdentifier: CellReuseID.subCategory.rawValue,
+                    for: indexPath) as? UICollectionViewCell else {
+                        return nil
+                }
+                
+                // サブカテゴリセルの内容を設定
+                var config = UIListContentConfiguration.subtitleCell()
+                config.text = subCategory.name
+                config.secondaryText = "\(subCategory.items.count)個のアイテム"
+                config.textProperties.font = UIFont.boldSystemFont(ofSize: 16)
+                cell.contentConfiguration = config
+                cell.backgroundColor = UIColor.systemGray6
+                cell.layer.cornerRadius = 8
+                cell.clipsToBounds = true
+                
+                return cell
+                
+            case .item(let item, _):
+                guard let cell = collectionView.dequeueReusableCell(
+                    withReuseIdentifier: CellReuseID.item.rawValue,
+                    for: indexPath) as? UICollectionViewCell else {
+                        return nil
+                }
+                
+                // アイテムセルの内容を設定
+                var config = UIListContentConfiguration.cell()
+                config.text = item.title
+                cell.contentConfiguration = config
+                cell.backgroundColor = item.color
+                cell.layer.cornerRadius = 8
+                cell.clipsToBounds = true
+                
+                return cell
             }
-            
-            // セルの内容を設定
-            var config = UIListContentConfiguration.cell()
-            config.text = item.title
-            cell.contentConfiguration = config
-            cell.backgroundColor = item.color
-            cell.layer.cornerRadius = 8
-            cell.clipsToBounds = true
-            
-            return cell
         }
         
         // ヘッダービュープロバイダーの設定
-        dataSource.supplementaryViewProvider = { [weak self] (collectionView, kind, indexPath) -> UICollectionReusableView? in
+        dataSource.supplementaryViewProvider = { [weak self] (collectionView: UICollectionView, kind: String, indexPath: IndexPath) -> UICollectionReusableView? in
             guard kind == UICollectionView.elementKindSectionHeader else { return nil }
             
             let headerView = collectionView.dequeueReusableSupplementaryView(
@@ -99,69 +123,66 @@ class CollectionViewDataSource {
     
     /// 初期データをロード
     func applyInitialSnapshots() {
-        // カテゴリとアイテムを作成
-        let foodItems = [
+        // フルーツカテゴリ
+        let fruitItems1 = [
             Item(title: "りんご", color: .systemRed),
-            Item(title: "バナナ", color: .systemYellow),
+            Item(title: "バナナ", color: .systemYellow)
+        ]
+        
+        let fruitItems2 = [
             Item(title: "オレンジ", color: .systemOrange),
             Item(title: "ぶどう", color: .purple)
         ]
         
-        let sportsItems = [
-            Item(title: "サッカー", color: .systemGreen),
-            Item(title: "野球", color: .systemBlue),
-            Item(title: "バスケットボール", color: .systemOrange),
-            Item(title: "テニス", color: .systemYellow)
+        let fruitSubs = [
+            SubCategory(name: "国産フルーツ", items: fruitItems1),
+            SubCategory(name: "輸入フルーツ", items: fruitItems2)
         ]
         
-        let travelItems = [
+        // スポーツカテゴリ
+        let ballSportsItems = [
+            Item(title: "サッカー", color: .systemGreen),
+            Item(title: "野球", color: .systemBlue),
+            Item(title: "バスケットボール", color: .systemOrange)
+        ]
+        
+        let racketSportsItems = [
+            Item(title: "テニス", color: .systemYellow),
+            Item(title: "バドミントン", color: .systemCyan)
+        ]
+        
+        let sportsSubs = [
+            SubCategory(name: "ボールスポーツ", items: ballSportsItems),
+            SubCategory(name: "ラケットスポーツ", items: racketSportsItems)
+        ]
+        
+        // 旅行カテゴリ
+        let domesticPlaces = [
             Item(title: "京都", color: .systemRed),
-            Item(title: "沖縄", color: .systemBlue),
             Item(title: "北海道", color: .systemCyan),
-            Item(title: "東京", color: .systemGray)
+            Item(title: "沖縄", color: .systemBlue)
+        ]
+        
+        let overseasPlaces = [
+            Item(title: "ハワイ", color: .systemGreen),
+            Item(title: "パリ", color: .systemPink),
+            Item(title: "ニューヨーク", color: .systemGray)
+        ]
+        
+        let travelSubs = [
+            SubCategory(name: "国内", items: domesticPlaces),
+            SubCategory(name: "海外", items: overseasPlaces)
         ]
         
         // カテゴリを作成
         categories = [
-            Category(name: "食べ物", items: foodItems),
-            Category(name: "スポーツ", items: sportsItems),
-            Category(name: "旅行先", items: travelItems)
+            Category(name: "フルーツ", subCategories: fruitSubs),
+            Category(name: "スポーツ", subCategories: sportsSubs),
+            Category(name: "旅行先", subCategories: travelSubs)
         ]
         
-        // セクションを作成
-        let sections: [Section] = categories.map { Section(category: $0) }
-        
-        // スナップショットを作成
-        var snapshot = NSDiffableDataSourceSnapshot<Section, Item>()
-        
-        // セクションとアイテムを追加
-        for (index, section) in sections.enumerated() {
-            snapshot.appendSections([section])
-            snapshot.appendItems(categories[index].items, toSection: section)
-        }
-        
-        // スナップショットを適用
-        dataSource.apply(snapshot, animatingDifferences: false)
-    }
-    
-    /// 指定されたセクションのアイテムを効率的に更新する
-    /// - Parameters:
-    ///   - section: 更新対象のセクション
-    ///   - items: 新しいアイテム配列
-    ///   - animate: アニメーションの有無
-    func updateSection(_ section: Section, with items: [Item], animate: Bool = true) {
-        // 現在のスナップショットを複製（値型なのでこれだけで複製される）
-        var newSnapshot = dataSource.snapshot()
-        
-        // 指定されたセクションのアイテムだけを削除
-        let currentItems = newSnapshot.itemIdentifiers(inSection: section)
-        newSnapshot.deleteItems(currentItems)
-        
-        // 新しいアイテムを追加
-        newSnapshot.appendItems(items, toSection: section)
-        
-        // スナップショットを適用（DiffableDataSourceが自動的に差分を計算）
-        dataSource.apply(newSnapshot, animatingDifferences: animate)
+        // セクションを更新
+        updateSections()
     }
     
     /// カテゴリをリロードする
@@ -170,17 +191,31 @@ class CollectionViewDataSource {
     ///   - animate: アニメーションの有無
     func reloadCategories(_ categories: [Category], animate: Bool = true) {
         self.categories = categories
-        
-        // セクションを作成
-        let sections: [Section] = categories.map { Section(category: $0) }
-        
+        updateSections(animate: animate)
+    }
+    
+    /// セクションとアイテムを更新する
+    /// - Parameter animate: アニメーションの有無
+    private func updateSections(animate: Bool = false) {
         // 新しいスナップショットを作成
-        var snapshot = NSDiffableDataSourceSnapshot<Section, Item>()
+        var snapshot = NSDiffableDataSourceSnapshot<Section, CellItem>()
         
-        // セクションとアイテムを追加
-        for (index, section) in sections.enumerated() {
+        // カテゴリごとにセクションとセルアイテムを作成
+        for category in categories {
+            // セクションを作成
+            let section = Section(category: category)
             snapshot.appendSections([section])
-            snapshot.appendItems(categories[index].items, toSection: section)
+            
+            // サブカテゴリとアイテムをセルアイテムとして追加
+            for subCategory in category.subCategories {
+                // まずサブカテゴリのセルを追加
+                let subCategoryCell = CellItem.subCategory(subCategory)
+                snapshot.appendItems([subCategoryCell], toSection: section)
+                
+                // 続いて、そのサブカテゴリに含まれるアイテムを追加
+                let itemCells = subCategory.items.map { CellItem.item($0, subCategory) }
+                snapshot.appendItems(itemCells, toSection: section)
+            }
         }
         
         // スナップショットを適用
