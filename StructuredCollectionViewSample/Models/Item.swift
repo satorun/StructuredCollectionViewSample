@@ -8,6 +8,26 @@
 import UIKit
 
 // アイテムモデル
+struct Category: Hashable {
+    var id: UUID
+    var name: String
+    var items: [Item]
+
+    init(name: String, items: [Item]) {
+        self.id = UUID()
+        self.name = name
+        self.items = items
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    static func == (lhs: Category, rhs: Category) -> Bool {
+        return lhs.id == rhs.id
+    }
+}
+
 struct Item: Hashable {
     let id: UUID
     let title: String

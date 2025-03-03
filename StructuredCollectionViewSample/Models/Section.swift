@@ -7,20 +7,23 @@
 
 import Foundation
 
-// セクションの種類を定義するenum
-enum Section: Int, CaseIterable {
-    case grid
-    case list
-    case horizontal
+// セクションを表すモデル
+struct Section: Hashable {
+    // セクションのカテゴリ
+    let category: Category
     
+    // セクションのタイトル（カテゴリ名）
     var title: String {
-        switch self {
-        case .grid:
-            return "グリッド"
-        case .list:
-            return "リスト"
-        case .horizontal:
-            return "水平スクロール"
-        }
+        return category.name
+    }
+    
+    // Equatableの実装
+    static func == (lhs: Section, rhs: Section) -> Bool {
+        return lhs.category.id == rhs.category.id
+    }
+    
+    // Hashableの実装
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(category.id)
     }
 } 

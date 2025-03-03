@@ -18,6 +18,9 @@ class CollectionViewDataSource {
     /// DiffableDataSource
     private(set) var dataSource: UICollectionViewDiffableDataSource<Section, Item>!
     
+    /// カテゴリのリスト
+    private var categories: [Category] = []
+    
     /// 指定されたコレクションビューに対してデータソースを設定
     /// - Parameter collectionView: 設定対象のコレクションビュー
     init(collectionView: UICollectionView) {
@@ -57,7 +60,7 @@ class CollectionViewDataSource {
         }
         
         // ヘッダービュープロバイダーの設定
-        dataSource.supplementaryViewProvider = { (collectionView, kind, indexPath) -> UICollectionReusableView? in
+        dataSource.supplementaryViewProvider = { [weak self] (collectionView, kind, indexPath) -> UICollectionReusableView? in
             guard kind == UICollectionView.elementKindSectionHeader else { return nil }
             
             let headerView = collectionView.dequeueReusableSupplementaryView(
@@ -72,7 +75,15 @@ class CollectionViewDataSource {
             let label = UILabel()
             label.translatesAutoresizingMaskIntoConstraints = false
             label.font = UIFont.boldSystemFont(ofSize: 18)
-            label.text = Section(rawValue: indexPath.section)?.title
+            
+            // 現在のスナップショットからセクションを取得
+            guard let sections = self?.dataSource.snapshot().sectionIdentifiers,
+                  indexPath.section < sections.count else {
+                label.text = "不明なセクション"
+                return headerView
+            }
+            
+            label.text = sections[indexPath.section].title
             headerView.addSubview(label)
             
             NSLayoutConstraint.activate([
@@ -88,23 +99,52 @@ class CollectionViewDataSource {
     
     /// 初期データをロード
     func applyInitialSnapshots() {
-        // 各セクションのデータを作成
-        let gridItems = (0..<10).map { Item(title: "グリッド \($0)", color: .systemBlue) }
-        let listItems = (0..<10).map { Item(title: "リスト \($0)", color: .systemGreen) }
-        let horizontalItems = (0..<10).map { Item(title: "水平 \($0)", color: .systemOrange) }
+        // カテゴリとアイテムを作成
+        let foodItems = [
+            Item(title: "りんご", color: .systemRed),
+            Item(title: "バナナ", color: .systemYellow),
+            Item(title: "オレンジ", color: .systemOrange),
+            Item(title: "ぶどう", color: .purple)
+        ]
+        
+        let sportsItems = [
+            Item(title: "サッカー", color: .systemGreen),
+            Item(title: "野球", color: .systemBlue),
+            Item(title: "バスケットボール", color: .systemOrange),
+            Item(title: "テニス", color: .systemYellow)
+        ]
+        
+        let travelItems = [
+            Item(title: "京都", color: .systemRed),
+            Item(title: "沖縄", color: .systemBlue),
+            Item(title: "北海道", color: .systemCyan),
+            Item(title: "東京", color: .systemGray)
+        ]
+        
+        // カテゴリを作成
+        categories = [
+            Category(name: "食べ物", items: foodItems),
+            Category(name: "スポーツ", items: sportsItems),
+            Category(name: "旅行先", items: travelItems)
+        ]
+        
+        // セクションを作成
+        let sections: [Section] = categories.map { Section(category: $0) }
         
         // スナップショットを作成
-        var snapshot: NSDiffableDataSourceSnapshot<Section, Item> = NSDiffableDataSourceSnapshot<Section, Item>()
-        snapshot.appendSections([.grid, .list, .horizontal])
-        snapshot.appendItems(gridItems, toSection: .grid)
-        snapshot.appendItems(listItems, toSection: .list)
-        snapshot.appendItems(horizontalItems, toSection: .horizontal)
+        var snapshot = NSDiffableDataSourceSnapshot<Section, Item>()
+        
+        // セクションとアイテムを追加
+        for (index, section) in sections.enumerated() {
+            snapshot.appendSections([section])
+            snapshot.appendItems(categories[index].items, toSection: section)
+        }
         
         // スナップショットを適用
         dataSource.apply(snapshot, animatingDifferences: false)
     }
     
-    /// 指定されたセクションのアイテムを効率的に更新する（セクション順序を維持）
+    /// 指定されたセクションのアイテムを効率的に更新する
     /// - Parameters:
     ///   - section: 更新対象のセクション
     ///   - items: 新しいアイテム配列
@@ -122,5 +162,28 @@ class CollectionViewDataSource {
         
         // スナップショットを適用（DiffableDataSourceが自動的に差分を計算）
         dataSource.apply(newSnapshot, animatingDifferences: animate)
+    }
+    
+    /// カテゴリをリロードする
+    /// - Parameters:
+    ///   - categories: 新しいカテゴリ配列
+    ///   - animate: アニメーションの有無
+    func reloadCategories(_ categories: [Category], animate: Bool = true) {
+        self.categories = categories
+        
+        // セクションを作成
+        let sections: [Section] = categories.map { Section(category: $0) }
+        
+        // 新しいスナップショットを作成
+        var snapshot = NSDiffableDataSourceSnapshot<Section, Item>()
+        
+        // セクションとアイテムを追加
+        for (index, section) in sections.enumerated() {
+            snapshot.appendSections([section])
+            snapshot.appendItems(categories[index].items, toSection: section)
+        }
+        
+        // スナップショットを適用
+        dataSource.apply(snapshot, animatingDifferences: animate)
     }
 } 
