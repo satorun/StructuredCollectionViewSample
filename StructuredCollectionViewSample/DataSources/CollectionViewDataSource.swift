@@ -16,6 +16,10 @@ class CollectionViewDataSource {
         case subCategory = "SubCategoryCell"
         /// アイテムセル
         case item = "ItemCell"
+        /// バナーセル
+        case banner = "BannerCell"
+        /// おすすめアイテムセル
+        case recommendedItem = "RecommendedItemCell"
     }
     
     /// DiffableDataSource
@@ -23,6 +27,12 @@ class CollectionViewDataSource {
     
     /// カテゴリのリスト
     private var categories: [Category] = []
+    
+    /// バナーのリスト
+    private var banners: [Banner] = []
+    
+    /// おすすめアイテムのリスト
+    private var recommendedItems: [Item] = []
     
     /// 指定されたコレクションビューに対してデータソースを設定
     /// - Parameter collectionView: 設定対象のコレクションビュー
@@ -44,6 +54,8 @@ class CollectionViewDataSource {
         // セルの登録
         collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.subCategory.rawValue)
         collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.item.rawValue)
+        collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.banner.rawValue)
+        collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.recommendedItem.rawValue)
         
         // ヘッダーの登録
         collectionView.register(UICollectionReusableView.self,
@@ -63,6 +75,12 @@ class CollectionViewDataSource {
                 
             case .item(let item, _):
                 return self?.configureItemCell(collectionView: collectionView, indexPath: indexPath, item: item)
+                
+            case .banner(let banner):
+                return self?.configureBannerCell(collectionView: collectionView, indexPath: indexPath, banner: banner)
+                
+            case .recommendedItem(let item):
+                return self?.configureRecommendedItemCell(collectionView: collectionView, indexPath: indexPath, item: item)
             }
         }
     }
@@ -117,6 +135,59 @@ class CollectionViewDataSource {
         return cell
     }
     
+    /// バナーセルの構成
+    /// - Parameters:
+    ///   - collectionView: コレクションビュー
+    ///   - indexPath: インデックスパス
+    ///   - banner: 表示するバナー
+    /// - Returns: 設定されたセル
+    private func configureBannerCell(collectionView: UICollectionView, indexPath: IndexPath, banner: Banner) -> UICollectionViewCell? {
+        guard let cell = collectionView.dequeueReusableCell(
+            withReuseIdentifier: CellReuseID.banner.rawValue,
+            for: indexPath) as? UICollectionViewCell else {
+                return nil
+        }
+        
+        // バナーセルの内容を設定
+        var config = UIListContentConfiguration.cell()
+        config.text = banner.title
+        config.textProperties.font = UIFont.boldSystemFont(ofSize: 18)
+        config.textProperties.color = .white
+        cell.contentConfiguration = config
+        cell.backgroundColor = banner.backgroundColor
+        cell.layer.cornerRadius = 12
+        cell.clipsToBounds = true
+        
+        return cell
+    }
+    
+    /// おすすめアイテムセルの構成
+    /// - Parameters:
+    ///   - collectionView: コレクションビュー
+    ///   - indexPath: インデックスパス
+    ///   - item: 表示するアイテム
+    /// - Returns: 設定されたセル
+    private func configureRecommendedItemCell(collectionView: UICollectionView, indexPath: IndexPath, item: Item) -> UICollectionViewCell? {
+        guard let cell = collectionView.dequeueReusableCell(
+            withReuseIdentifier: CellReuseID.recommendedItem.rawValue,
+            for: indexPath) as? UICollectionViewCell else {
+                return nil
+        }
+        
+        // おすすめアイテムセルの内容を設定
+        var config = UIListContentConfiguration.cell()
+        config.text = item.title
+        config.textProperties.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        cell.contentConfiguration = config
+        cell.backgroundColor = item.color
+        cell.layer.cornerRadius = 8
+        cell.clipsToBounds = true
+        
+        // 星マークを追加するなど、おすすめであることを示す装飾を追加することも可能
+        
+        return cell
+    }
+    
     /// ヘッダープロバイダーの設定
     private func configureHeaderProvider() {
         dataSource.supplementaryViewProvider = { [weak self] (collectionView: UICollectionView, kind: String, indexPath: IndexPath) -> UICollectionReusableView? in
@@ -158,6 +229,13 @@ class CollectionViewDataSource {
     
     /// 初期データをロード
     func applyInitialSnapshots() {
+        // バナーの作成
+        banners = [
+            Banner(title: "春の新商品特集", imageName: "spring_banner", backgroundColor: .systemPink),
+            Banner(title: "限定セール実施中", imageName: "sale_banner", backgroundColor: .systemBlue),
+            Banner(title: "新規会員登録キャンペーン", imageName: "campaign_banner", backgroundColor: .systemGreen)
+        ]
+        
         // フルーツカテゴリ
         let fruitItems1 = [
             Item(title: "りんご", color: .systemRed),
@@ -216,6 +294,15 @@ class CollectionViewDataSource {
             Category(name: "旅行先", subCategories: travelSubs)
         ]
         
+        // おすすめアイテムをランダムに選出（異なるカテゴリから）
+        recommendedItems = [
+            fruitItems1[0],  // りんご
+            ballSportsItems[1],  // 野球
+            overseasPlaces[0],  // ハワイ
+            fruitItems2[0],  // オレンジ
+            domesticPlaces[1]  // 北海道
+        ]
+        
         // セクションを更新
         updateSections()
     }
@@ -229,14 +316,42 @@ class CollectionViewDataSource {
         updateSections(animate: animate)
     }
     
+    /// バナーをリロードする
+    /// - Parameters:
+    ///   - banners: 新しいバナー配列
+    ///   - animate: アニメーションの有無
+    func reloadBanners(_ banners: [Banner], animate: Bool = true) {
+        self.banners = banners
+        updateSections(animate: animate)
+    }
+    
+    /// おすすめアイテムをリロードする
+    /// - Parameters:
+    ///   - items: 新しいおすすめアイテム配列
+    ///   - animate: アニメーションの有無
+    func reloadRecommendedItems(_ items: [Item], animate: Bool = true) {
+        self.recommendedItems = items
+        updateSections(animate: animate)
+    }
+    
     /// セクションとアイテムを更新する
     /// - Parameter animate: アニメーションの有無
     private func updateSections(animate: Bool = false) {
         // 新しいスナップショットを作成
         var snapshot = NSDiffableDataSourceSnapshot<Section, CellItem>()
         
-        // カテゴリごとにセクションとセルアイテムを作成
-        for category in categories {
+        // 1. バナーセクションを最初に追加
+        if !banners.isEmpty {
+            let bannerSection = Section(banner: ())
+            snapshot.appendSections([bannerSection])
+            
+            // バナーアイテムを追加
+            let bannerItems = banners.map { CellItem.banner($0) }
+            snapshot.appendItems(bannerItems, toSection: bannerSection)
+        }
+        
+        // 2. カテゴリセクションを追加
+        for (index, category) in categories.enumerated() {
             // セクションを作成
             let section = Section(category: category)
             snapshot.appendSections([section])
@@ -250,6 +365,16 @@ class CollectionViewDataSource {
                 // 続いて、そのサブカテゴリに含まれるアイテムを追加
                 let itemCells = subCategory.items.map { CellItem.item($0, subCategory) }
                 snapshot.appendItems(itemCells, toSection: section)
+            }
+            
+            // 3. 3番目のカテゴリの後にレコメンドセクションを追加
+            if index == 2 && !recommendedItems.isEmpty {
+                let recommendedSection = Section(recommendations: ())
+                snapshot.appendSections([recommendedSection])
+                
+                // おすすめアイテムを追加
+                let recommendedCells = recommendedItems.map { CellItem.recommendedItem($0) }
+                snapshot.appendItems(recommendedCells, toSection: recommendedSection)
             }
         }
         

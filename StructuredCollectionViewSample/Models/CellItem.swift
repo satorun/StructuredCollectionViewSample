@@ -16,6 +16,12 @@ enum CellItem: Hashable {
     /// アイテムのセル（SubCategoryの参照を保持）
     case item(Item, SubCategory)
     
+    /// バナーのセル
+    case banner(Banner)
+    
+    /// おすすめアイテムのセル
+    case recommendedItem(Item)
+    
     /// セルアイテムのID（Hashable実装のため）
     var id: String {
         switch self {
@@ -23,6 +29,10 @@ enum CellItem: Hashable {
             return "sub_\(subCategory.id)"
         case .item(let item, let subCategory):
             return "item_\(item.id)_\(subCategory.id)"
+        case .banner(let banner):
+            return "banner_\(banner.id)"
+        case .recommendedItem(let item):
+            return "recommended_\(item.id)"
         }
     }
     
