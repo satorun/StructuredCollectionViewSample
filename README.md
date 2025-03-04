@@ -67,7 +67,11 @@
 
 ## スクリーンショット
 
-（スクリーンショットを追加する場合はここに配置）
+
+https://github.com/user-attachments/assets/e53a831d-28fa-4f18-8947-82677f752b8d
+
+
+
 
 ## 学習ポイント
 
