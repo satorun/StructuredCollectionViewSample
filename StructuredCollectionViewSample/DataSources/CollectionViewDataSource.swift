@@ -92,15 +92,35 @@ class CollectionViewDataSource {
                 return nil
         }
         
-        // サブカテゴリセルの内容を設定
+        // サブカテゴリセルの内容を設定 - タイトルスタイルに変更
         var config = UIListContentConfiguration.subtitleCell()
         config.text = subCategory.name
         config.secondaryText = "\(subCategory.items.count)個のアイテム"
-        config.textProperties.font = UIFont.boldSystemFont(ofSize: 16)
+        config.textProperties.font = UIFont.boldSystemFont(ofSize: 18)
+        config.textProperties.color = UIColor.darkText
+        config.secondaryTextProperties.font = UIFont.systemFont(ofSize: 14)
+        config.secondaryTextProperties.color = UIColor.systemGray
+        
+        // 左側のインデントを追加してタイトル感を強調
+        config.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12)
+        
         cell.contentConfiguration = config
-        cell.backgroundColor = UIColor.systemGray6
-        cell.layer.cornerRadius = 8
-        cell.clipsToBounds = true
+        
+        // 背景色を目立たせる
+        let backgroundView = UIView()
+        backgroundView.backgroundColor = UIColor.systemBackground
+        backgroundView.layer.cornerRadius = 10
+        backgroundView.layer.shadowColor = UIColor.black.cgColor
+        backgroundView.layer.shadowOffset = CGSize(width: 0, height: 1)
+        backgroundView.layer.shadowOpacity = 0.1
+        backgroundView.layer.shadowRadius = 2
+        cell.backgroundView = backgroundView
+        
+        // 選択時の背景色
+        let selectedBackgroundView = UIView()
+        selectedBackgroundView.backgroundColor = UIColor.systemGray6
+        selectedBackgroundView.layer.cornerRadius = 10
+        cell.selectedBackgroundView = selectedBackgroundView
         
         return cell
     }

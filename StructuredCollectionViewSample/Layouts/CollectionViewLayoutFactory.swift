@@ -27,8 +27,9 @@ class CollectionViewLayoutFactory {
                 return Self.createBannerSection()
             case .recommendations:
                 return Self.createRecommendedItemsSection()
-            case .category:
-                return Self.createCategorySection()
+            case .category(let category):
+                // 動的なカテゴリレイアウトを使用
+                return Self.createNestedCategoryLayout(with: sectionType)
             }
         }
         
@@ -127,35 +128,15 @@ class CollectionViewLayoutFactory {
     /// カテゴリセクションのレイアウトを作成
     /// - Returns: NSCollectionLayoutSection
     static func createCategorySection() -> NSCollectionLayoutSection {
-        // 2つの異なるアイテム種類を持つセクションを作成
-        
-        // サブカテゴリのアイテムレイアウト（幅いっぱい）
-        let subCategoryItem = NSCollectionLayoutItem(
-            layoutSize: NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1.0),
-                heightDimension: .estimated(44)
-            )
-        )
-        subCategoryItem.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 0, trailing: 8)
-        
-        // サブカテゴリのグループ
-        let subCategoryGroup = NSCollectionLayoutGroup.horizontal(
-            layoutSize: NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1.0),
-                heightDimension: .estimated(44)
-            ),
-            subitems: [subCategoryItem]
-        )
-        
-        // アイテムのレイアウト（2つのアイテムを横に並べる）
+        // アイテムのレイアウト（2カラム）
         let itemSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(0.5),
-            heightDimension: .fractionalHeight(1.0)
+            heightDimension: .absolute(100)
         )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
         item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
         
-        // アイテムのグループ（2つ横並び）
+        // 2カラムのアイテムグループ
         let itemGroupSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),
             heightDimension: .absolute(100)
@@ -166,11 +147,137 @@ class CollectionViewLayoutFactory {
             count: 2
         )
         
-        // セクション定義（サブカテゴリの後にアイテムグループを表示）
+        // セクション定義
         let section = NSCollectionLayoutSection(group: itemGroup)
-        section.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
+        section.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 24, trailing: 12)
         
-        // セクションヘッダー追加
+        // セクションヘッダー
+        let headerSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .estimated(44)
+        )
+        let header = NSCollectionLayoutBoundarySupplementaryItem(
+            layoutSize: headerSize,
+            elementKind: UICollectionView.elementKindSectionHeader,
+            alignment: .top
+        )
+        section.boundarySupplementaryItems = [header]
+        
+        return section
+    }
+    
+    /// カテゴリセクション用のネストされたレイアウトを作成（サブカテゴリとアイテム）
+    /// - Parameter sectionType: セクションタイプ
+    /// - Returns: NSCollectionLayoutSection
+    static func createNestedCategoryLayout(with sectionType: SectionType) -> NSCollectionLayoutSection {
+        // sectionTypeからカテゴリ情報を取得
+        guard case .category(let category) = sectionType else {
+            // 通常のカテゴリセクションを返す（フォールバック）
+            return createCategorySection()
+        }
+        
+        // アイテムセル用レイアウト（2カラム）
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(0.5),
+            heightDimension: .absolute(100)
+        )
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+        
+        // 2カラムアイテムグループ
+        let itemGroupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .absolute(100)
+        )
+        let itemGroup = NSCollectionLayoutGroup.horizontal(
+            layoutSize: itemGroupSize,
+            subitem: item,
+            count: 2  // 常に2カラム
+        )
+        
+        // 奇数アイテム用の1アイテムグループ（1つのみ表示）
+        let singleItemGroup = NSCollectionLayoutGroup.horizontal(
+            layoutSize: itemGroupSize,
+            subitem: item,
+            count: 1  // 1アイテムのみ
+        )
+        
+        // サブカテゴリをタイトル行として表示するためのレイアウト
+        let titleHeight: CGFloat = 44
+        let titleSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .absolute(titleHeight)
+        )
+        let titleItem = NSCollectionLayoutItem(layoutSize: titleSize)
+        
+        // タイトル用の余白調整（シンプルでタイトルらしい見た目に）
+        titleItem.contentInsets = NSDirectionalEdgeInsets(
+            top: 16,
+            leading: 8,
+            bottom: 8,
+            trailing: 8
+        )
+        
+        // サブカテゴリごとにグループを作成（タイトル + アイテム）
+        var categoryGroups: [NSCollectionLayoutGroup] = []
+        
+        for subCategory in category.subCategories {
+            // サブカテゴリタイトル用のグループ
+            let titleGroup = NSCollectionLayoutGroup.horizontal(
+                layoutSize: titleSize,
+                subitems: [titleItem]
+            )
+            
+            // アイテム数に基づいて必要な行数を計算
+            let itemCount = subCategory.items.count
+            let fullRows = itemCount / 2      // 完全な行数（2アイテムずつ）
+            let hasPartialRow = itemCount % 2 != 0 // 奇数アイテムの場合
+            
+            // アイテム行を格納する配列
+            var itemRows: [NSCollectionLayoutGroup] = []
+            
+            // 完全な行（2アイテム）を追加
+            for _ in 0..<fullRows {
+                itemRows.append(itemGroup)
+            }
+            
+            // 奇数アイテムがある場合、単一アイテムグループを追加
+            if hasPartialRow {
+                itemRows.append(singleItemGroup)
+            }
+            
+            // このサブカテゴリの合計高さを計算
+            let totalHeight = titleHeight + CGFloat(itemRows.count) * 100
+            
+            // タイトルとアイテム行を組み合わせた垂直グループを作成
+            var allItems = [titleGroup]
+            allItems.append(contentsOf: itemRows)
+            
+            let subCategoryGroup = NSCollectionLayoutGroup.vertical(
+                layoutSize: NSCollectionLayoutSize(
+                    widthDimension: .fractionalWidth(1.0),
+                    heightDimension: .absolute(totalHeight)
+                ),
+                subitems: allItems
+            )
+            
+            categoryGroups.append(subCategoryGroup)
+        }
+        
+        // すべてのサブカテゴリグループを垂直に並べる
+        let mainGroup = NSCollectionLayoutGroup.vertical(
+            layoutSize: NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1.0),
+                heightDimension: .estimated(CGFloat(categoryGroups.count) * 200) // 十分な高さを確保
+            ),
+            subitems: categoryGroups
+        )
+        
+        // セクション定義
+        let section = NSCollectionLayoutSection(group: mainGroup)
+        section.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 24, trailing: 12)
+        
+        // カテゴリのメインヘッダー
         let headerSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),
             heightDimension: .estimated(44)
