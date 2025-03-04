@@ -76,8 +76,8 @@ class ViewController: UIViewController {
                 recommendedItems: data.recommendedItems
             )
             
-            // セクションタイプを更新
-            self.updateSectionTypes(with: data.categories)
+            // セクションタイプを更新（おすすめセクションは2番目の位置に表示）
+            self.updateSectionTypes(with: data.categories, recommendationIndex: 2)
             
             // セクション構成を更新
             self.collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
@@ -92,7 +92,7 @@ class ViewController: UIViewController {
     }
     
     // カテゴリ情報からセクションタイプを更新
-    private func updateSectionTypes(with categories: [Category]) {
+    private func updateSectionTypes(with categories: [Category], recommendationIndex: Int? = nil) {
         sectionTypes = [.banner] // バナーセクションから開始
         
         // 各カテゴリをセクションタイプに追加
@@ -100,8 +100,14 @@ class ViewController: UIViewController {
             sectionTypes.append(.category(category))
         }
         
-        // おすすめセクションを追加
-        sectionTypes.append(.recommendations)
+        // おすすめセクションを追加（指定位置に挿入するか、指定がなければ末尾に追加）
+        if let index = recommendationIndex, index > 0, index < sectionTypes.count {
+            // 指定された位置が有効な場合、その位置に挿入
+            sectionTypes.insert(.recommendations, at: index)
+        } else {
+            // 指定された位置が無効な場合、または指定がない場合は末尾に追加
+            sectionTypes.append(.recommendations)
+        }
         
         // レイアウトを更新
         collectionView.collectionViewLayout = CollectionViewLayoutFactory.createCompositionalLayout(sectionTypes: sectionTypes)
@@ -182,8 +188,8 @@ class ViewController: UIViewController {
                 recommendedItems: data.recommendedItems
             )
             
-            // セクションタイプを更新
-            self.updateSectionTypes(with: data.categories)
+            // セクションタイプを更新（おすすめセクションは2番目の位置に表示）
+            self.updateSectionTypes(with: data.categories, recommendationIndex: 2)
             
             // セクション構成を更新
             self.collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
