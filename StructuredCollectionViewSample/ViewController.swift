@@ -43,6 +43,9 @@ class ViewController: UIViewController {
         Task {
             await loadInitialData()
         }
+        
+        // テスト用のカテゴリ更新ボタンを追加
+        setupTestUpdateButton()
     }
     
     // アクティビティインジケーターの設定
@@ -92,21 +95,48 @@ class ViewController: UIViewController {
     
     // カテゴリ情報からセクションタイプを更新
     private func updateSectionTypes(with categories: [Category], recommendationIndex: Int? = nil) {
-        sectionTypes = [.banner] // バナーセクションから開始
+        // 現在のおすすめセクションのインデックスを保持
+        // (もしあれば、既存のレイアウト構造を維持するため)
+        let existingRecommendIndex = sectionTypes.firstIndex { type in
+            if case .recommendations = type { return true }
+            return false
+        }
+        
+        // バナーセクションがあるかどうかを確認
+        let hasBanner = sectionTypes.contains { type in
+            if case .banner = type { return true }
+            return false
+        }
+        
+        // セクションタイプを再構築
+        var newSectionTypes: [SectionType] = []
+        
+        // バナーがあれば追加
+        if hasBanner {
+            newSectionTypes.append(.banner)
+        } else {
+            // デフォルトのバナーセクションから開始
+            newSectionTypes.append(.banner)
+        }
         
         // 各カテゴリをセクションタイプに追加
         for category in categories {
-            sectionTypes.append(.category(category))
+            newSectionTypes.append(.category(category))
         }
         
-        // おすすめセクションを追加（指定位置に挿入するか、指定がなければ末尾に追加）
-        if let index = recommendationIndex, index > 0, index < sectionTypes.count {
-            // 指定された位置が有効な場合、その位置に挿入
-            sectionTypes.insert(.recommendations, at: index)
+        // おすすめセクションを追加（既存の位置または指定位置に挿入、それ以外は末尾に追加）
+        let targetIndex = existingRecommendIndex ?? recommendationIndex
+        
+        if let index = targetIndex, index > 0, index < newSectionTypes.count {
+            // 指定または既存の位置が有効な場合、その位置に挿入
+            newSectionTypes.insert(.recommendations, at: index)
         } else {
-            // 指定された位置が無効な場合、または指定がない場合は末尾に追加
-            sectionTypes.append(.recommendations)
+            // 位置指定がない場合は末尾に追加
+            newSectionTypes.append(.recommendations)
         }
+        
+        // 新しいセクションタイプを保存
+        sectionTypes = newSectionTypes
         
         // レイアウトを更新
         collectionView.collectionViewLayout = CollectionViewLayoutFactory.createCompositionalLayout(sectionTypes: sectionTypes)
@@ -145,6 +175,121 @@ class ViewController: UIViewController {
         ))
         
         present(alert, animated: true)
+    }
+    
+    /// 特定のカテゴリを更新する
+    /// - Parameter categories: 更新するカテゴリの配列
+    func updateCategories(_ categories: [Category]) {
+        // カテゴリを更新 - 古いデータを保持せず完全に置き換える
+        collectionViewDataSource.replaceAllCategories(categories, animate: true)
+        
+        // セクションタイプを新しいカテゴリで再構築
+        updateSectionTypes(with: categories)
+        
+        // セクション構成を更新
+        collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
+    }
+    
+    // 既存のセクションタイプを保持しつつ、カテゴリのみを更新したセクションタイプを作成
+    private func createUpdatedSectionTypes(with newCategories: [Category]) -> [SectionType] {
+        var updatedTypes: [SectionType] = []
+        
+        // 元のセクションタイプの順序を維持しつつ、カテゴリ部分だけを更新
+        for type in sectionTypes {
+            switch type {
+            case .category(let existingCategory):
+                // 更新対象のカテゴリがあるか確認
+                if let updatedCategory = newCategories.first(where: { $0.name == existingCategory.name }) {
+                    // 名前が一致するカテゴリがあれば、更新されたカテゴリを使用
+                    updatedTypes.append(.category(updatedCategory))
+                } else {
+                    // それ以外の場合は既存のカテゴリをそのまま使用
+                    updatedTypes.append(type)
+                }
+            case .banner, .recommendations:
+                // バナーとおすすめはそのまま維持
+                updatedTypes.append(type)
+            }
+        }
+        
+        // 元のセクションタイプにない新しいカテゴリを追加
+        for newCategory in newCategories {
+            let exists = sectionTypes.contains { type in
+                if case .category(let cat) = type, cat.name == newCategory.name {
+                    return true
+                }
+                return false
+            }
+            
+            // 既存のセクションタイプにないカテゴリは追加
+            if !exists {
+                // おすすめセクションの前に追加するか、なければ最後に追加
+                if let recommendIndex = updatedTypes.firstIndex(where: { 
+                    if case .recommendations = $0 { return true }
+                    return false 
+                }) {
+                    updatedTypes.insert(.category(newCategory), at: recommendIndex)
+                } else {
+                    updatedTypes.append(.category(newCategory))
+                }
+            }
+        }
+        
+        // 更新されたセクションタイプを保存
+        self.sectionTypes = updatedTypes
+        
+        return updatedTypes
+    }
+    
+    // テスト用の更新ボタンを設定
+    private func setupTestUpdateButton() {
+        let updateButton = UIButton(type: .system)
+        updateButton.translatesAutoresizingMaskIntoConstraints = false
+        updateButton.setTitle("カテゴリ更新", for: .normal)
+        updateButton.backgroundColor = .systemBlue
+        updateButton.setTitleColor(.white, for: .normal)
+        updateButton.layer.cornerRadius = 8
+        updateButton.addTarget(self, action: #selector(updateCategoryButtonTapped), for: .touchUpInside)
+        
+        view.addSubview(updateButton)
+        
+        NSLayoutConstraint.activate([
+            updateButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            updateButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            updateButton.widthAnchor.constraint(equalToConstant: 150),
+            updateButton.heightAnchor.constraint(equalToConstant: 44)
+        ])
+    }
+    
+    @objc private func updateCategoryButtonTapped() {
+        // テスト用にカテゴリを更新
+        Task {
+            do {
+                // ローディング開始
+                activityIndicator.startAnimating()
+                
+                // 更新用のデータを取得（実際のアプリではAPIから特定カテゴリだけ取得するなど）
+                let updatedData = try await dataProvider.fetchUpdatedData()
+                
+                // ローディング終了
+                activityIndicator.stopAnimating()
+                
+                // カテゴリ名の確認（デバッグ用）
+                print("更新前のカテゴリ: \(self.collectionViewDataSource.categories.map { $0.name })")
+                print("更新するカテゴリ: \(updatedData.categories.map { $0.name })")
+                
+                // カテゴリを更新
+                updateCategories(updatedData.categories)
+                
+                // デバッグ用ログ
+                print("カテゴリ更新完了: \(updatedData.categories.count)件")
+                print("更新後のセクション: \(self.sectionTypes.count)件")
+            } catch {
+                // エラー処理
+                activityIndicator.stopAnimating()
+                showErrorAlert(message: "カテゴリの更新に失敗しました: \(error.localizedDescription)")
+            }
+        }
     }
 }
 

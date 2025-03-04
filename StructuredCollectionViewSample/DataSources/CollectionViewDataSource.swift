@@ -24,7 +24,7 @@ class CollectionViewDataSource {
     private(set) var dataSource: UICollectionViewDiffableDataSource<Section, CellItem>!
     
     /// カテゴリのリスト
-    private var categories: [Category] = []
+    private(set) var categories: [Category] = []
     
     /// バナーのリスト
     private var banners: [Banner] = []
@@ -289,6 +289,68 @@ class CollectionViewDataSource {
         // ※ このメソッドは updateSectionConfiguration から呼ばれることを想定
         // そうでない場合は既存のセクション順序を維持
         updateSections(animate: animate)
+    }
+    
+    /// カテゴリを更新して対応するセクションを更新する
+    /// - Parameters:
+    ///   - categories: 更新するカテゴリの配列
+    ///   - animate: アニメーションの有無
+    func updateCategories(_ categories: [Category], animate: Bool = true) {
+        // カテゴリの更新
+        for updatedCategory in categories {
+            // 既存のカテゴリを更新
+            if let index = self.categories.firstIndex(where: { $0.name == updatedCategory.name }) {
+                self.categories[index] = updatedCategory
+            } else {
+                // 存在しないカテゴリは追加
+                self.categories.append(updatedCategory)
+            }
+        }
+        
+        // 注意: この時点ではUIの更新は行わない
+        // ViewControllerが新しいsectionTypesを作成し、
+        // updateSectionConfigurationメソッドを呼び出す必要がある
+        
+        // すぐに更新したい場合は既存のスナップショットを使って部分的に更新することも可能
+        var snapshot = dataSource.snapshot()
+        
+        // 各セクションを個別に更新
+        for sectionIdentifier in snapshot.sectionIdentifiers {
+            if case .category(let existingCategory) = sectionIdentifier.type {
+                // 更新対象のカテゴリを探す
+                if let updatedCategory = categories.first(where: { $0.name == existingCategory.name }) {
+                    // カテゴリが見つかった場合、そのセクションのアイテムを削除して再追加
+                    let oldItems = snapshot.itemIdentifiers(inSection: sectionIdentifier)
+                    snapshot.deleteItems(oldItems)
+                    
+                    // サブカテゴリとアイテムを追加
+                    for subCategory in updatedCategory.subCategories {
+                        // サブカテゴリセルを追加
+                        let subCategoryItem = CellItem.subCategory(subCategory)
+                        snapshot.appendItems([subCategoryItem], toSection: sectionIdentifier)
+                        
+                        // アイテムを追加
+                        let itemCells = subCategory.items.map { CellItem.item($0, subCategory) }
+                        snapshot.appendItems(itemCells, toSection: sectionIdentifier)
+                    }
+                }
+            }
+        }
+        
+        // 更新されたスナップショットを適用
+        dataSource.apply(snapshot, animatingDifferences: animate)
+    }
+    
+    /// すべてのカテゴリを新しいカテゴリで置き換える
+    /// - Parameters:
+    ///   - categories: 新しいカテゴリの配列
+    ///   - animate: アニメーションの有無
+    func replaceAllCategories(_ categories: [Category], animate: Bool = true) {
+        // カテゴリを完全に置き換え
+        self.categories = categories
+        
+        // 注意: ここでは更新は行わない
+        // ViewControllerがupdateSectionConfigurationを呼び出す必要がある
     }
     
     /// バナーをリロードする
