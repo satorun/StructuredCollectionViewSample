@@ -53,7 +53,7 @@ class CollectionViewLayoutFactory {
         // バナーグループのレイアウト（フルスクリーン幅の85%）
         let groupSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(0.85),
-            heightDimension: .absolute(180)
+            heightDimension: .estimated(180)
         )
         let group = NSCollectionLayoutGroup.horizontal(
             layoutSize: groupSize,
@@ -94,7 +94,7 @@ class CollectionViewLayoutFactory {
         // 2アイテムを1グループとして扱う
         let groupSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(0.9),  // 画面幅の90%（カテゴリセクションに近い幅）
-            heightDimension: .absolute(100)         // カテゴリセクションと同じ高さ
+            heightDimension: .estimated(100)         // カテゴリセクションと同じ高さ
         )
         let group = NSCollectionLayoutGroup.horizontal(
             layoutSize: groupSize,
@@ -139,7 +139,7 @@ class CollectionViewLayoutFactory {
         // 2カラムのアイテムグループ
         let itemGroupSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),
-            heightDimension: .absolute(100)
+            heightDimension: .estimated(100)
         )
         let itemGroup = NSCollectionLayoutGroup.horizontal(
             layoutSize: itemGroupSize,
@@ -187,7 +187,7 @@ class CollectionViewLayoutFactory {
         // 2カラムアイテムグループ
         let itemGroupSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),
-            heightDimension: .absolute(100)
+            heightDimension: .estimated(100)
         )
         let itemGroup = NSCollectionLayoutGroup.horizontal(
             layoutSize: itemGroupSize,
@@ -206,7 +206,7 @@ class CollectionViewLayoutFactory {
         let titleHeight: CGFloat = 44
         let titleSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),
-            heightDimension: .absolute(titleHeight)
+            heightDimension: .estimated(titleHeight)
         )
         let titleItem = NSCollectionLayoutItem(layoutSize: titleSize)
         
@@ -246,8 +246,8 @@ class CollectionViewLayoutFactory {
                 itemRows.append(singleItemGroup)
             }
             
-            // このサブカテゴリの合計高さを計算
-            let totalHeight = titleHeight + CGFloat(itemRows.count) * 100
+            // このサブカテゴリの推定高さを計算
+            let estimatedHeight = titleHeight + CGFloat(itemRows.count) * 100
             
             // タイトルとアイテム行を組み合わせた垂直グループを作成
             var allItems = [titleGroup]
@@ -256,7 +256,7 @@ class CollectionViewLayoutFactory {
             let subCategoryGroup = NSCollectionLayoutGroup.vertical(
                 layoutSize: NSCollectionLayoutSize(
                     widthDimension: .fractionalWidth(1.0),
-                    heightDimension: .absolute(totalHeight)
+                    heightDimension: .estimated(estimatedHeight)
                 ),
                 subitems: allItems
             )
@@ -296,14 +296,18 @@ class CollectionViewLayoutFactory {
     /// - Returns: NSCollectionLayoutSection
     static func createGridSection() -> NSCollectionLayoutSection {
         // アイテムサイズ定義
-        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(0.5),
-                                             heightDimension: .fractionalHeight(1.0))
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(0.5),
+            heightDimension: .fractionalHeight(1.0)
+        )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
         item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
         
         // グループサイズ定義
-        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0),
-                                              heightDimension: .fractionalWidth(0.5))
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .estimated(150)
+        )
         let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
         
         // セクション定義
@@ -311,12 +315,15 @@ class CollectionViewLayoutFactory {
         section.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
         
         // セクションヘッダー追加
-        let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0),
-                                              heightDimension: .estimated(44))
+        let headerSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .estimated(44)
+        )
         let header = NSCollectionLayoutBoundarySupplementaryItem(
             layoutSize: headerSize,
             elementKind: UICollectionView.elementKindSectionHeader,
-            alignment: .top)
+            alignment: .top
+        )
         section.boundarySupplementaryItems = [header]
         
         return section
@@ -325,24 +332,31 @@ class CollectionViewLayoutFactory {
     /// リストスタイルのセクションレイアウトを作成
     /// - Returns: NSCollectionLayoutSection
     static func createListSection() -> NSCollectionLayoutSection {
-        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0),
-                                             heightDimension: .fractionalHeight(1.0))
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .fractionalHeight(1.0)
+        )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
         item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
         
-        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0),
-                                              heightDimension: .absolute(60))
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .estimated(60)
+        )
         let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
         
         let section = NSCollectionLayoutSection(group: group)
         section.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
         
-        let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0),
-                                              heightDimension: .estimated(44))
+        let headerSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .estimated(44)
+        )
         let header = NSCollectionLayoutBoundarySupplementaryItem(
             layoutSize: headerSize,
             elementKind: UICollectionView.elementKindSectionHeader,
-            alignment: .top)
+            alignment: .top
+        )
         section.boundarySupplementaryItems = [header]
         
         return section
@@ -351,25 +365,32 @@ class CollectionViewLayoutFactory {
     /// 水平スクロールスタイルのセクションレイアウトを作成
     /// - Returns: NSCollectionLayoutSection
     static func createHorizontalSection() -> NSCollectionLayoutSection {
-        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0),
-                                             heightDimension: .fractionalHeight(1.0))
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .fractionalHeight(1.0)
+        )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
         item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
         
-        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(0.6),
-                                              heightDimension: .absolute(120))
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(0.6),
+            heightDimension: .estimated(120)
+        )
         let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
         
         let section = NSCollectionLayoutSection(group: group)
         section.orthogonalScrollingBehavior = .continuous
         section.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
         
-        let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0),
-                                              heightDimension: .estimated(44))
+        let headerSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .estimated(44)
+        )
         let header = NSCollectionLayoutBoundarySupplementaryItem(
             layoutSize: headerSize,
             elementKind: UICollectionView.elementKindSectionHeader,
-            alignment: .top)
+            alignment: .top
+        )
         section.boundarySupplementaryItems = [header]
         
         return section
