@@ -353,6 +353,23 @@ class CollectionViewDataSource {
         // ViewControllerがupdateSectionConfigurationを呼び出す必要がある
     }
     
+    /// 既存のカテゴリを保持しつつ、新しいカテゴリを末尾に追加する
+    /// - Parameters:
+    ///   - categories: 追加するカテゴリの配列
+    ///   - animate: アニメーションの有無
+    func appendCategories(_ categories: [Category], animate: Bool = true) {
+        // 既存のカテゴリと重複しない新しいカテゴリのみを追加
+        for newCategory in categories {
+            let exists = self.categories.contains { $0.name == newCategory.name }
+            if !exists {
+                self.categories.append(newCategory)
+            }
+        }
+        
+        // 注意: ここでは更新は行わない
+        // ViewControllerがupdateSectionConfigurationを呼び出す必要がある
+    }
+    
     /// バナーをリロードする
     /// - Parameters:
     ///   - banners: 新しいバナー配列

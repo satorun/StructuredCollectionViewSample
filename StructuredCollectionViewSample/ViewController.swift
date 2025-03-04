@@ -190,6 +190,19 @@ class ViewController: UIViewController {
         collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
     }
     
+    /// 既存のカテゴリを保持しつつ、新しいカテゴリを追加する
+    /// - Parameter categories: 追加するカテゴリの配列
+    func appendCategories(_ categories: [Category]) {
+        // カテゴリを追加
+        collectionViewDataSource.appendCategories(categories, animate: true)
+        
+        // すべてのカテゴリでセクションタイプを再構築
+        updateSectionTypes(with: collectionViewDataSource.categories)
+        
+        // セクション構成を更新
+        collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
+    }
+    
     // 既存のセクションタイプを保持しつつ、カテゴリのみを更新したセクションタイプを作成
     private func createUpdatedSectionTypes(with newCategories: [Category]) -> [SectionType] {
         var updatedTypes: [SectionType] = []
@@ -245,7 +258,7 @@ class ViewController: UIViewController {
     private func setupTestUpdateButton() {
         let updateButton = UIButton(type: .system)
         updateButton.translatesAutoresizingMaskIntoConstraints = false
-        updateButton.setTitle("カテゴリ更新", for: .normal)
+        updateButton.setTitle("カテゴリ追加", for: .normal)
         updateButton.backgroundColor = .systemBlue
         updateButton.setTitleColor(.white, for: .normal)
         updateButton.layer.cornerRadius = 8
@@ -275,14 +288,14 @@ class ViewController: UIViewController {
                 activityIndicator.stopAnimating()
                 
                 // カテゴリ名の確認（デバッグ用）
-                print("更新前のカテゴリ: \(self.collectionViewDataSource.categories.map { $0.name })")
-                print("更新するカテゴリ: \(updatedData.categories.map { $0.name })")
+                print("既存のカテゴリ: \(self.collectionViewDataSource.categories.map { $0.name })")
+                print("追加するカテゴリ: \(updatedData.categories.map { $0.name })")
                 
-                // カテゴリを更新
-                updateCategories(updatedData.categories)
+                // カテゴリを追加（置き換えではなく追加）
+                appendCategories(updatedData.categories)
                 
                 // デバッグ用ログ
-                print("カテゴリ更新完了: \(updatedData.categories.count)件")
+                print("カテゴリ追加完了: 現在 \(self.collectionViewDataSource.categories.count)件")
                 print("更新後のセクション: \(self.sectionTypes.count)件")
             } catch {
                 // エラー処理
