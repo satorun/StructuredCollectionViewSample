@@ -219,8 +219,12 @@ class CollectionViewLayoutFactory {
         )
         
         // 奇数アイテム用の1アイテムグループ（1つのみ表示）
+        let singleItemGroupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(0.5),
+            heightDimension: .estimated(100)
+        )
         let singleItemGroup = NSCollectionLayoutGroup.horizontal(
-            layoutSize: itemGroupSize,
+            layoutSize: singleItemGroupSize,
             subitem: item,
             count: 1  // 1アイテムのみ
         )
