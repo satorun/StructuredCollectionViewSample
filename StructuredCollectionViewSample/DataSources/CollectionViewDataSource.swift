@@ -106,15 +106,6 @@ class CollectionViewDataSource {
         
         cell.contentConfiguration = config
         
-        // 背景色を目立たせる
-        let backgroundView = UIView()
-        backgroundView.backgroundColor = UIColor.systemBackground
-        backgroundView.layer.cornerRadius = 10
-        backgroundView.layer.shadowColor = UIColor.black.cgColor
-        backgroundView.layer.shadowOffset = CGSize(width: 0, height: 1)
-        backgroundView.layer.shadowOpacity = 0.1
-        backgroundView.layer.shadowRadius = 2
-        cell.backgroundView = backgroundView
         
         // 選択時の背景色
         let selectedBackgroundView = UIView()

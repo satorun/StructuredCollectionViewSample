@@ -38,7 +38,6 @@ class ViewController: UIViewController {
         // セクションの定義
         setupSectionTypes()
         setupCollectionView()
-        setupNavigationBar()
         
         // 初期データのロード
         Task {
@@ -146,61 +145,6 @@ class ViewController: UIViewController {
         ))
         
         present(alert, animated: true)
-    }
-    
-    // ナビゲーションバーの設定
-    private func setupNavigationBar() {
-        title = "多階層カテゴリサンプル"
-        
-        // リロードボタンを追加
-        let reloadButton = UIBarButtonItem(
-            barButtonSystemItem: .refresh,
-            target: self,
-            action: #selector(reloadDataAction)
-        )
-        navigationItem.rightBarButtonItem = reloadButton
-    }
-    
-    // データをリロードするアクション（UIボタンから呼ばれる非同期メソッド）
-    @objc private func reloadDataAction() {
-        Task {
-            await reloadData()
-        }
-    }
-    
-    // データをリロードする実装
-    private func reloadData() async {
-        // ローディング開始（UIの操作はメインスレッドで自動的に行われる）
-        activityIndicator.startAnimating()
-        
-        do {
-            // DataProviderから更新データを取得
-            let data = try await dataProvider.fetchUpdatedData()
-            
-            // ViewControllerは暗黙的に@MainActorなのでMainActor.runは不要
-            // ローディング終了
-            activityIndicator.stopAnimating()
-            
-            // データをデータソースに設定
-            self.collectionViewDataSource.applyInitialSnapshots(
-                banners: data.banners,
-                categories: data.categories,
-                recommendedItems: data.recommendedItems
-            )
-            
-            // セクションタイプを更新（おすすめセクションは2番目の位置に表示）
-            self.updateSectionTypes(with: data.categories, recommendationIndex: 2)
-            
-            // セクション構成を更新
-            self.collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
-        } catch {
-            // エラー処理（ViewControllerは暗黙的に@MainActorなのでMainActor.runは不要）
-            // ローディング終了
-            activityIndicator.stopAnimating()
-            
-            // エラーアラートを表示
-            showErrorAlert(message: "データの更新に失敗しました: \(error.localizedDescription)")
-        }
     }
 }
 
