@@ -11,18 +11,9 @@ import UIKit
 class CollectionViewLayoutFactory {
     
     /// 多階層カテゴリ表示用のCompositionalLayoutを作成する
+    /// - Parameter sectionTypes: 各セクションのタイプ情報を含む配列
     /// - Returns: 設定済みのUICollectionViewLayout
-    static func createCompositionalLayout() -> UICollectionViewLayout {
-        // セクションタイプを保持する配列（デモンストレーション用）
-        // 実際のアプリでは、この情報はデータソースから取得すべきです
-        let sectionTypes: [SectionType] = [
-            .banner,        // バナーセクション (index 0)
-            .category(Category(name: "", subCategories: [])), // フルーツカテゴリ (index 1)
-            .category(Category(name: "", subCategories: [])), // スポーツカテゴリ (index 2)
-            .category(Category(name: "", subCategories: [])), // 旅行カテゴリ (index 3)
-            .recommendations // おすすめセクション (index 4)
-        ]
-        
+    static func createCompositionalLayout(sectionTypes: [SectionType]) -> UICollectionViewLayout {
         let layout = UICollectionViewCompositionalLayout { (sectionIndex, layoutEnvironment) -> NSCollectionLayoutSection? in
             // セクションのインデックスに基づいてレイアウトを選択
             guard sectionIndex < sectionTypes.count else {

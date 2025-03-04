@@ -13,41 +13,139 @@ class ViewController: UIViewController {
     
     // データソースを管理するオブジェクト
     private var collectionViewDataSource: CollectionViewDataSource!
+    
+    // セクションタイプを保持する配列
+    private var sectionTypes: [SectionType] = []
+    
+    // ローディングインジケーター
+    private lazy var activityIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .large)
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        indicator.hidesWhenStopped = true
+        indicator.color = .systemBlue
+        return indicator
+    }()
+    
+    // データプロバイダー（サーバー通信のモック）
+    private let dataProvider = DataProvider.shared
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // ローディングインジケーターの設定
+        setupActivityIndicator()
+        
+        // セクションの定義
+        setupSectionTypes()
         setupCollectionView()
         setupNavigationBar()
+        
+        // 初期データのロード
+        Task {
+            await loadInitialData()
+        }
+    }
+    
+    // アクティビティインジケーターの設定
+    private func setupActivityIndicator() {
+        view.addSubview(activityIndicator)
+        
+        NSLayoutConstraint.activate([
+            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+    }
+    
+    // 初期データをロード
+    private func loadInitialData() async {
+        // ローディング開始（UIの更新はメインスレッドで行う）
+        await MainActor.run {
+            activityIndicator.startAnimating()
+        }
+        
+        do {
+            // DataProviderからデータを取得
+            let data = try await dataProvider.fetchAllData()
+            
+            // UIの更新はメインスレッドで行う
+            await MainActor.run {
+                // ローディング終了
+                activityIndicator.stopAnimating()
+                
+                // データをデータソースに設定
+                self.collectionViewDataSource.applyInitialSnapshots(
+                    banners: data.banners,
+                    categories: data.categories,
+                    recommendedItems: data.recommendedItems
+                )
+                
+                // セクションタイプを更新
+                self.updateSectionTypes(with: data.categories)
+                
+                // セクション構成を更新
+                self.collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
+            }
+        } catch {
+            // エラー処理をメインスレッドで行う
+            await MainActor.run {
+                // ローディング終了
+                activityIndicator.stopAnimating()
+                
+                // エラーアラートを表示
+                showErrorAlert(message: "データの取得に失敗しました: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    // カテゴリ情報からセクションタイプを更新
+    private func updateSectionTypes(with categories: [Category]) {
+        sectionTypes = [.banner] // バナーセクションから開始
+        
+        // 各カテゴリをセクションタイプに追加
+        for category in categories {
+            sectionTypes.append(.category(category))
+        }
+        
+        // おすすめセクションを追加
+        sectionTypes.append(.recommendations)
+        
+        // レイアウトを更新
+        collectionView.collectionViewLayout = CollectionViewLayoutFactory.createCompositionalLayout(sectionTypes: sectionTypes)
+    }
+    
+    // セクションタイプの設定
+    private func setupSectionTypes() {
+        // 初期化時は空のセクションタイプのリストを作成
+        // 実際のデータはloadInitialDataで取得してから設定する
+        sectionTypes = []
     }
     
     // コレクションビューの設定
     private func setupCollectionView() {
         // コレクションビューのレイアウト設定
-        collectionView.collectionViewLayout = CollectionViewLayoutFactory.createCompositionalLayout()
+        collectionView.collectionViewLayout = UICollectionViewFlowLayout()
         
         // データソースの設定
         collectionViewDataSource = CollectionViewDataSource(collectionView: collectionView)
         
         // スクロールデリゲートの設定
         collectionView.delegate = self
-        
-        // 初期データをロード
-        collectionViewDataSource.applyInitialSnapshots()
     }
     
-    // おすすめセクションのインデックスを取得
-    private func findRecommendationSectionIndex() -> Int? {
-        let snapshot = collectionViewDataSource.dataSource.snapshot()
+    // エラーアラートを表示
+    private func showErrorAlert(message: String) {
+        let alert = UIAlertController(
+            title: "エラー",
+            message: message,
+            preferredStyle: .alert
+        )
         
-        // おすすめセクションを探す
-        for (index, section) in snapshot.sectionIdentifiers.enumerated() {
-            if case .recommendations = section.type {
-                return index
-            }
-        }
+        alert.addAction(UIAlertAction(
+            title: "OK",
+            style: .default
+        ))
         
-        return nil
+        present(alert, animated: true)
     }
     
     // ナビゲーションバーの設定
@@ -58,62 +156,57 @@ class ViewController: UIViewController {
         let reloadButton = UIBarButtonItem(
             barButtonSystemItem: .refresh,
             target: self,
-            action: #selector(reloadData)
+            action: #selector(reloadDataAction)
         )
         navigationItem.rightBarButtonItem = reloadButton
     }
     
-    // データをリロードするアクション
-    @objc private func reloadData() {
-        // 新しいカテゴリとサブカテゴリ、アイテムを作成
+    // データをリロードするアクション（UIボタンから呼ばれる非同期メソッド）
+    @objc private func reloadDataAction() {
+        Task {
+            await reloadData()
+        }
+    }
+    
+    // データをリロードする実装
+    private func reloadData() async {
+        // ローディング開始（UIの更新はメインスレッドで行う）
+        await MainActor.run {
+            activityIndicator.startAnimating()
+        }
         
-        // 家電カテゴリ
-        let kitchenItems = [
-            Item(title: "冷蔵庫", color: .systemBlue),
-            Item(title: "電子レンジ", color: .systemGray),
-            Item(title: "トースター", color: .systemOrange)
-        ]
-        
-        let avItems = [
-            Item(title: "テレビ", color: .systemPurple),
-            Item(title: "ゲーム機", color: .systemGreen),
-            Item(title: "スピーカー", color: .systemRed)
-        ]
-        
-        let applianceSubs = [
-            SubCategory(name: "キッチン家電", items: kitchenItems),
-            SubCategory(name: "AV機器", items: avItems)
-        ]
-        
-        // 季節カテゴリ
-        let springItems = [
-            Item(title: "桜", color: .systemPink),
-            Item(title: "チューリップ", color: .systemRed)
-        ]
-        
-        let summerItems = [
-            Item(title: "ひまわり", color: .systemYellow),
-            Item(title: "海", color: .systemBlue)
-        ]
-        
-        let fallItems = [
-            Item(title: "紅葉", color: .systemOrange),
-            Item(title: "きのこ", color: .systemBrown)
-        ]
-        
-        let seasonSubs = [
-            SubCategory(name: "春", items: springItems),
-            SubCategory(name: "夏", items: summerItems),
-            SubCategory(name: "秋", items: fallItems)
-        ]
-        
-        // 新しいカテゴリを作成してリロード
-        let categories = [
-            Category(name: "家電製品", subCategories: applianceSubs),
-            Category(name: "季節", subCategories: seasonSubs)
-        ]
-        
-        collectionViewDataSource.reloadCategories(categories)
+        do {
+            // DataProviderから更新データを取得
+            let data = try await dataProvider.fetchUpdatedData()
+            
+            // UIの更新はメインスレッドで行う
+            await MainActor.run {
+                // ローディング終了
+                activityIndicator.stopAnimating()
+                
+                // データをデータソースに設定
+                self.collectionViewDataSource.applyInitialSnapshots(
+                    banners: data.banners,
+                    categories: data.categories,
+                    recommendedItems: data.recommendedItems
+                )
+                
+                // セクションタイプを更新
+                self.updateSectionTypes(with: data.categories)
+                
+                // セクション構成を更新
+                self.collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
+            }
+        } catch {
+            // エラー処理をメインスレッドで行う
+            await MainActor.run {
+                // ローディング終了
+                activityIndicator.stopAnimating()
+                
+                // エラーアラートを表示
+                showErrorAlert(message: "データの更新に失敗しました: \(error.localizedDescription)")
+            }
+        }
     }
 }
 
@@ -130,4 +223,5 @@ extension Collection {
         return indices.contains(index) ? self[index] : nil
     }
 }
+
 

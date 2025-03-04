@@ -218,91 +218,94 @@ class CollectionViewDataSource {
     }
     
     /// 初期データをロード
-    func applyInitialSnapshots() {
-        // バナーの作成
-        banners = [
-            Banner(title: "春の新商品特集", imageName: "spring_banner", backgroundColor: .systemPink),
-            Banner(title: "限定セール実施中", imageName: "sale_banner", backgroundColor: .systemBlue),
-            Banner(title: "新規会員登録キャンペーン", imageName: "campaign_banner", backgroundColor: .systemGreen)
-        ]
+    /// - Parameters:
+    ///   - banners: 表示するバナーの配列
+    ///   - categories: 表示するカテゴリの配列
+    ///   - recommendedItems: 表示するおすすめアイテムの配列
+    func applyInitialSnapshots(banners: [Banner], categories: [Category], recommendedItems: [Item]) {
+        // 受け取ったデータを保存
+        self.banners = banners
+        self.categories = categories
+        self.recommendedItems = recommendedItems
         
-        // フルーツカテゴリ
-        let fruitItems1 = [
-            Item(title: "りんご", color: .systemRed),
-            Item(title: "バナナ", color: .systemYellow)
-        ]
-        
-        let fruitItems2 = [
-            Item(title: "オレンジ", color: .systemOrange),
-            Item(title: "ぶどう", color: .purple)
-        ]
-        
-        let fruitSubs = [
-            SubCategory(name: "国産フルーツ", items: fruitItems1),
-            SubCategory(name: "輸入フルーツ", items: fruitItems2)
-        ]
-        
-        // スポーツカテゴリ
-        let ballSportsItems = [
-            Item(title: "サッカー", color: .systemGreen),
-            Item(title: "野球", color: .systemBlue),
-            Item(title: "バスケットボール", color: .systemOrange)
-        ]
-        
-        let racketSportsItems = [
-            Item(title: "テニス", color: .systemYellow),
-            Item(title: "バドミントン", color: .systemCyan)
-        ]
-        
-        let sportsSubs = [
-            SubCategory(name: "ボールスポーツ", items: ballSportsItems),
-            SubCategory(name: "ラケットスポーツ", items: racketSportsItems)
-        ]
-        
-        // 旅行カテゴリ
-        let domesticPlaces = [
-            Item(title: "京都", color: .systemRed),
-            Item(title: "北海道", color: .systemCyan),
-            Item(title: "沖縄", color: .systemBlue)
-        ]
-        
-        let overseasPlaces = [
-            Item(title: "ハワイ", color: .systemGreen),
-            Item(title: "パリ", color: .systemPink),
-            Item(title: "ニューヨーク", color: .systemGray)
-        ]
-        
-        let travelSubs = [
-            SubCategory(name: "国内", items: domesticPlaces),
-            SubCategory(name: "海外", items: overseasPlaces)
-        ]
-        
-        // カテゴリを作成
-        categories = [
-            Category(name: "フルーツ", subCategories: fruitSubs),
-            Category(name: "スポーツ", subCategories: sportsSubs),
-            Category(name: "旅行先", subCategories: travelSubs)
-        ]
-        
-        // おすすめアイテムをランダムに選出（異なるカテゴリから）
-        recommendedItems = [
-            fruitItems1[0],  // りんご
-            ballSportsItems[1],  // 野球
-            overseasPlaces[0],  // ハワイ
-            fruitItems2[0],  // オレンジ
-            domesticPlaces[1]  // 北海道
-        ]
-        
-        // セクションを更新
-        updateSections()
+        // ※注意: このメソッドを呼び出した後、
+        // ViewControllerから updateSectionConfiguration を呼び出して
+        // 実際のセクションタイプとその順序を設定する必要があります
     }
     
-    /// カテゴリをリロードする
+    /// セクションとアイテムを更新する
     /// - Parameters:
-    ///   - categories: 新しいカテゴリ配列
+    ///   - animate: アニメーションの有無
+    ///   - sectionTypes: 表示するセクションタイプの配列（nilの場合は既存の順序を維持）
+    private func updateSections(animate: Bool = false, sectionTypes: [SectionType]? = nil) {
+        // 新しいスナップショットを作成
+        var snapshot = NSDiffableDataSourceSnapshot<Section, CellItem>()
+        
+        // 渡されたセクションタイプがある場合はそれを使用し、なければデフォルト順序で表示
+        let sectionsToDisplay = sectionTypes ?? []
+        
+        // セクションタイプに基づいてセクションとアイテムを追加
+        for sectionType in sectionsToDisplay {
+            switch sectionType {
+            case .banner:
+                if !banners.isEmpty {
+                    let bannerSection = Section(banner: ())
+                    snapshot.appendSections([bannerSection])
+                    
+                    // バナーアイテムを追加
+                    let bannerItems = banners.map { CellItem.banner($0) }
+                    snapshot.appendItems(bannerItems, toSection: bannerSection)
+                }
+                
+            case .category(let category):
+                // セクションを作成
+                let section = Section(category: category)
+                snapshot.appendSections([section])
+                
+                // サブカテゴリとアイテムをセルアイテムとして追加
+                for subCategory in category.subCategories {
+                    // まずサブカテゴリのセルを追加
+                    let subCategoryCell = CellItem.subCategory(subCategory)
+                    snapshot.appendItems([subCategoryCell], toSection: section)
+                    
+                    // 続いて、そのサブカテゴリに含まれるアイテムを追加
+                    let itemCells = subCategory.items.map { CellItem.item($0, subCategory) }
+                    snapshot.appendItems(itemCells, toSection: section)
+                }
+                
+            case .recommendations:
+                if !recommendedItems.isEmpty {
+                    let recommendedSection = Section(recommendations: ())
+                    snapshot.appendSections([recommendedSection])
+                    
+                    // おすすめアイテムを追加（共通化のためSubCategoryをnilに設定）
+                    let recommendedCells = recommendedItems.map { CellItem.item($0, nil) }
+                    snapshot.appendItems(recommendedCells, toSection: recommendedSection)
+                }
+            }
+        }
+        
+        // スナップショットを適用
+        dataSource.apply(snapshot, animatingDifferences: animate)
+    }
+    
+    /// セクションの構成を更新
+    /// - Parameters:
+    ///   - sectionTypes: 表示するセクションタイプの配列
+    ///   - animate: アニメーションの有無
+    func updateSectionConfiguration(sectionTypes: [SectionType], animate: Bool = true) {
+        updateSections(animate: animate, sectionTypes: sectionTypes)
+    }
+
+    /// カテゴリを更新
+    /// - Parameters:
+    ///   - categories: 新しいカテゴリの配列
     ///   - animate: アニメーションの有無
     func reloadCategories(_ categories: [Category], animate: Bool = true) {
         self.categories = categories
+        
+        // ※ このメソッドは updateSectionConfiguration から呼ばれることを想定
+        // そうでない場合は既存のセクション順序を維持
         updateSections(animate: animate)
     }
     
@@ -322,53 +325,5 @@ class CollectionViewDataSource {
     func reloadRecommendedItems(_ items: [Item], animate: Bool = true) {
         self.recommendedItems = items
         updateSections(animate: animate)
-    }
-    
-    /// セクションとアイテムを更新する
-    /// - Parameter animate: アニメーションの有無
-    private func updateSections(animate: Bool = false) {
-        // 新しいスナップショットを作成
-        var snapshot = NSDiffableDataSourceSnapshot<Section, CellItem>()
-        
-        // 1. バナーセクションを最初に追加
-        if !banners.isEmpty {
-            let bannerSection = Section(banner: ())
-            snapshot.appendSections([bannerSection])
-            
-            // バナーアイテムを追加
-            let bannerItems = banners.map { CellItem.banner($0) }
-            snapshot.appendItems(bannerItems, toSection: bannerSection)
-        }
-        
-        // 2. カテゴリセクションを追加
-        for (index, category) in categories.enumerated() {
-            // セクションを作成
-            let section = Section(category: category)
-            snapshot.appendSections([section])
-            
-            // サブカテゴリとアイテムをセルアイテムとして追加
-            for subCategory in category.subCategories {
-                // まずサブカテゴリのセルを追加
-                let subCategoryCell = CellItem.subCategory(subCategory)
-                snapshot.appendItems([subCategoryCell], toSection: section)
-                
-                // 続いて、そのサブカテゴリに含まれるアイテムを追加
-                let itemCells = subCategory.items.map { CellItem.item($0, subCategory) }
-                snapshot.appendItems(itemCells, toSection: section)
-            }
-            
-            // 3. 3番目のカテゴリの後にレコメンドセクションを追加
-            if index == 2 && !recommendedItems.isEmpty {
-                let recommendedSection = Section(recommendations: ())
-                snapshot.appendSections([recommendedSection])
-                
-                // おすすめアイテムを追加（共通化のためSubCategoryをnilに設定）
-                let recommendedCells = recommendedItems.map { CellItem.item($0, nil) }
-                snapshot.appendItems(recommendedCells, toSection: recommendedSection)
-            }
-        }
-        
-        // スナップショットを適用
-        dataSource.apply(snapshot, animatingDifferences: animate)
     }
 } 
