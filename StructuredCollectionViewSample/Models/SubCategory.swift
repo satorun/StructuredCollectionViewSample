@@ -9,7 +9,7 @@ import Foundation
 
 /// サブカテゴリを表す構造体
 struct SubCategory: Hashable {
-    /// サブカテゴリのID
+    /// サブカテゴリの一意識別子
     let id: UUID
     
     /// サブカテゴリの名前
@@ -19,6 +19,9 @@ struct SubCategory: Hashable {
     var items: [Item]
     
     /// 初期化
+    /// - Parameters:
+    ///   - name: サブカテゴリ名
+    ///   - items: アイテムの配列
     init(name: String, items: [Item]) {
         self.id = UUID()
         self.name = name

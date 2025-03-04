@@ -12,7 +12,9 @@ class CollectionViewDataSource {
     
     /// データソースの識別子
     enum CellReuseID: String {
+        /// サブカテゴリセル
         case subCategory = "SubCategoryCell"
+        /// アイテムセル
         case item = "ItemCell"
     }
     
@@ -31,6 +33,14 @@ class CollectionViewDataSource {
     /// データソースを設定
     /// - Parameter collectionView: 設定対象のコレクションビュー
     private func configureDataSource(collectionView: UICollectionView) {
+        registerCells(collectionView: collectionView)
+        configureCellProvider(collectionView: collectionView)
+        configureHeaderProvider()
+    }
+    
+    /// セルとヘッダーを登録
+    /// - Parameter collectionView: 設定対象のコレクションビュー
+    private func registerCells(collectionView: UICollectionView) {
         // セルの登録
         collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.subCategory.rawValue)
         collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.item.rawValue)
@@ -39,51 +49,76 @@ class CollectionViewDataSource {
         collectionView.register(UICollectionReusableView.self,
                                forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader,
                                withReuseIdentifier: "HeaderView")
-        
-        // セルプロバイダーの設定
+    }
+    
+    /// セルプロバイダーの設定
+    /// - Parameter collectionView: 設定対象のコレクションビュー
+    private func configureCellProvider(collectionView: UICollectionView) {
         dataSource = UICollectionViewDiffableDataSource<Section, CellItem>(collectionView: collectionView) { 
             [weak self] (collectionView: UICollectionView, indexPath: IndexPath, cellItem: CellItem) -> UICollectionViewCell? in
             
             switch cellItem {
             case .subCategory(let subCategory):
-                guard let cell = collectionView.dequeueReusableCell(
-                    withReuseIdentifier: CellReuseID.subCategory.rawValue,
-                    for: indexPath) as? UICollectionViewCell else {
-                        return nil
-                }
-                
-                // サブカテゴリセルの内容を設定
-                var config = UIListContentConfiguration.subtitleCell()
-                config.text = subCategory.name
-                config.secondaryText = "\(subCategory.items.count)個のアイテム"
-                config.textProperties.font = UIFont.boldSystemFont(ofSize: 16)
-                cell.contentConfiguration = config
-                cell.backgroundColor = UIColor.systemGray6
-                cell.layer.cornerRadius = 8
-                cell.clipsToBounds = true
-                
-                return cell
+                return self?.configureSubCategoryCell(collectionView: collectionView, indexPath: indexPath, subCategory: subCategory)
                 
             case .item(let item, _):
-                guard let cell = collectionView.dequeueReusableCell(
-                    withReuseIdentifier: CellReuseID.item.rawValue,
-                    for: indexPath) as? UICollectionViewCell else {
-                        return nil
-                }
-                
-                // アイテムセルの内容を設定
-                var config = UIListContentConfiguration.cell()
-                config.text = item.title
-                cell.contentConfiguration = config
-                cell.backgroundColor = item.color
-                cell.layer.cornerRadius = 8
-                cell.clipsToBounds = true
-                
-                return cell
+                return self?.configureItemCell(collectionView: collectionView, indexPath: indexPath, item: item)
             }
         }
+    }
+    
+    /// サブカテゴリセルの構成
+    /// - Parameters:
+    ///   - collectionView: コレクションビュー
+    ///   - indexPath: インデックスパス
+    ///   - subCategory: 表示するサブカテゴリ
+    /// - Returns: 設定されたセル
+    private func configureSubCategoryCell(collectionView: UICollectionView, indexPath: IndexPath, subCategory: SubCategory) -> UICollectionViewCell? {
+        guard let cell = collectionView.dequeueReusableCell(
+            withReuseIdentifier: CellReuseID.subCategory.rawValue,
+            for: indexPath) as? UICollectionViewCell else {
+                return nil
+        }
         
-        // ヘッダービュープロバイダーの設定
+        // サブカテゴリセルの内容を設定
+        var config = UIListContentConfiguration.subtitleCell()
+        config.text = subCategory.name
+        config.secondaryText = "\(subCategory.items.count)個のアイテム"
+        config.textProperties.font = UIFont.boldSystemFont(ofSize: 16)
+        cell.contentConfiguration = config
+        cell.backgroundColor = UIColor.systemGray6
+        cell.layer.cornerRadius = 8
+        cell.clipsToBounds = true
+        
+        return cell
+    }
+    
+    /// アイテムセルの構成
+    /// - Parameters:
+    ///   - collectionView: コレクションビュー
+    ///   - indexPath: インデックスパス
+    ///   - item: 表示するアイテム
+    /// - Returns: 設定されたセル
+    private func configureItemCell(collectionView: UICollectionView, indexPath: IndexPath, item: Item) -> UICollectionViewCell? {
+        guard let cell = collectionView.dequeueReusableCell(
+            withReuseIdentifier: CellReuseID.item.rawValue,
+            for: indexPath) as? UICollectionViewCell else {
+                return nil
+        }
+        
+        // アイテムセルの内容を設定
+        var config = UIListContentConfiguration.cell()
+        config.text = item.title
+        cell.contentConfiguration = config
+        cell.backgroundColor = item.color
+        cell.layer.cornerRadius = 8
+        cell.clipsToBounds = true
+        
+        return cell
+    }
+    
+    /// ヘッダープロバイダーの設定
+    private func configureHeaderProvider() {
         dataSource.supplementaryViewProvider = { [weak self] (collectionView: UICollectionView, kind: String, indexPath: IndexPath) -> UICollectionReusableView? in
             guard kind == UICollectionView.elementKindSectionHeader else { return nil }
             

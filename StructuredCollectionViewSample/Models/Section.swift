@@ -7,12 +7,13 @@
 
 import Foundation
 
-/// セクションを表すモデル
+/// コレクションビューのセクションを表すモデル
+/// UICollectionViewDiffableDataSourceのセクション識別に使用
 struct Section: Hashable {
-    /// セクションのID（一意な識別子）
+    /// セクションの一意識別子
     let id = UUID()
     
-    /// セクションのカテゴリ
+    /// セクションに関連付けられたカテゴリ
     let category: Category
     
     /// セクションのタイトル（カテゴリ名）
@@ -21,6 +22,7 @@ struct Section: Hashable {
     }
     
     /// 初期化
+    /// - Parameter category: セクションに関連付けるカテゴリ
     init(category: Category) {
         self.category = category
     }

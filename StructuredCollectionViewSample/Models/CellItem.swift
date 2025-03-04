@@ -8,14 +8,15 @@
 import Foundation
 
 /// コレクションビューに表示するセルアイテムの種類を表す列挙型
+/// DiffableDataSourceのアイテム識別に使用
 enum CellItem: Hashable {
     /// サブカテゴリのセル
     case subCategory(SubCategory)
     
-    /// アイテムのセル
+    /// アイテムのセル（SubCategoryの参照を保持）
     case item(Item, SubCategory)
     
-    /// セルアイテムのID
+    /// セルアイテムのID（Hashable実装のため）
     var id: String {
         switch self {
         case .subCategory(let subCategory):
