@@ -58,42 +58,36 @@ class ViewController: UIViewController {
     
     // 初期データをロード
     private func loadInitialData() async {
-        // ローディング開始（UIの更新はメインスレッドで行う）
-        await MainActor.run {
-            activityIndicator.startAnimating()
-        }
+        // ローディング開始（UIの操作はメインスレッドで自動的に行われる）
+        activityIndicator.startAnimating()
         
         do {
             // DataProviderからデータを取得
-            let data = try await dataProvider.fetchAllData()
+            let data: (banners: [Banner], categories: [Category], recommendedItems: [Item]) = try await dataProvider.fetchAllData()
             
-            // UIの更新はメインスレッドで行う
-            await MainActor.run {
-                // ローディング終了
-                activityIndicator.stopAnimating()
-                
-                // データをデータソースに設定
-                self.collectionViewDataSource.applyInitialSnapshots(
-                    banners: data.banners,
-                    categories: data.categories,
-                    recommendedItems: data.recommendedItems
-                )
-                
-                // セクションタイプを更新
-                self.updateSectionTypes(with: data.categories)
-                
-                // セクション構成を更新
-                self.collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
-            }
+            // ViewControllerは暗黙的に@MainActorなのでMainActor.runは不要
+            // ローディング終了
+            activityIndicator.stopAnimating()
+            
+            // データをデータソースに設定
+            self.collectionViewDataSource.applyInitialSnapshots(
+                banners: data.banners,
+                categories: data.categories,
+                recommendedItems: data.recommendedItems
+            )
+            
+            // セクションタイプを更新
+            self.updateSectionTypes(with: data.categories)
+            
+            // セクション構成を更新
+            self.collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
         } catch {
-            // エラー処理をメインスレッドで行う
-            await MainActor.run {
-                // ローディング終了
-                activityIndicator.stopAnimating()
-                
-                // エラーアラートを表示
-                showErrorAlert(message: "データの取得に失敗しました: \(error.localizedDescription)")
-            }
+            // エラー処理（ViewControllerは暗黙的に@MainActorなのでMainActor.runは不要）
+            // ローディング終了
+            activityIndicator.stopAnimating()
+            
+            // エラーアラートを表示
+            showErrorAlert(message: "データの取得に失敗しました: \(error.localizedDescription)")
         }
     }
     
@@ -170,42 +164,36 @@ class ViewController: UIViewController {
     
     // データをリロードする実装
     private func reloadData() async {
-        // ローディング開始（UIの更新はメインスレッドで行う）
-        await MainActor.run {
-            activityIndicator.startAnimating()
-        }
+        // ローディング開始（UIの操作はメインスレッドで自動的に行われる）
+        activityIndicator.startAnimating()
         
         do {
             // DataProviderから更新データを取得
             let data = try await dataProvider.fetchUpdatedData()
             
-            // UIの更新はメインスレッドで行う
-            await MainActor.run {
-                // ローディング終了
-                activityIndicator.stopAnimating()
-                
-                // データをデータソースに設定
-                self.collectionViewDataSource.applyInitialSnapshots(
-                    banners: data.banners,
-                    categories: data.categories,
-                    recommendedItems: data.recommendedItems
-                )
-                
-                // セクションタイプを更新
-                self.updateSectionTypes(with: data.categories)
-                
-                // セクション構成を更新
-                self.collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
-            }
+            // ViewControllerは暗黙的に@MainActorなのでMainActor.runは不要
+            // ローディング終了
+            activityIndicator.stopAnimating()
+            
+            // データをデータソースに設定
+            self.collectionViewDataSource.applyInitialSnapshots(
+                banners: data.banners,
+                categories: data.categories,
+                recommendedItems: data.recommendedItems
+            )
+            
+            // セクションタイプを更新
+            self.updateSectionTypes(with: data.categories)
+            
+            // セクション構成を更新
+            self.collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
         } catch {
-            // エラー処理をメインスレッドで行う
-            await MainActor.run {
-                // ローディング終了
-                activityIndicator.stopAnimating()
-                
-                // エラーアラートを表示
-                showErrorAlert(message: "データの更新に失敗しました: \(error.localizedDescription)")
-            }
+            // エラー処理（ViewControllerは暗黙的に@MainActorなのでMainActor.runは不要）
+            // ローディング終了
+            activityIndicator.stopAnimating()
+            
+            // エラーアラートを表示
+            showErrorAlert(message: "データの更新に失敗しました: \(error.localizedDescription)")
         }
     }
 }
