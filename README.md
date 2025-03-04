@@ -16,11 +16,18 @@
 
 ### モデル
 
-- `Section.swift`: コレクションビューのセクション構造を定義
+モデルは2つのカテゴリに分かれています：
+
+#### ドメインモデル（Models/Domain/）
+ビジネスロジックとデータ構造を表現するモデル：
 - `Category.swift`: メインカテゴリモデル
 - `SubCategory.swift`: サブカテゴリモデル
 - `Item.swift`: 商品アイテムモデル
 - `Banner.swift`: バナー表示用モデル
+
+#### UIモデル（Models/UI/）
+表示ロジックに関わるモデル：
+- `Section.swift`: コレクションビューのセクション構造を定義
 - `CellItem.swift`: セル表示のための抽象モデル
 
 ### データソース
