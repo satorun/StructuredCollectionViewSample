@@ -14,9 +14,6 @@ class ViewController: UIViewController {
     /// UICollectionViewDataSourceを管理するオブジェクト
     private var collectionViewDataSource: CollectionViewDataSource!
     
-    // セクションタイプを保持する配列
-    private var sectionTypes: [SectionType] = []
-    
     // ページング用の変数
     private var currentPage = 1
     private var isLoading = false
@@ -48,8 +45,6 @@ class ViewController: UIViewController {
         // ローディングインジケーターの設定
         setupActivityIndicator()
         
-        // セクションの定義
-        setupSectionTypes()
         setupCollectionView()
         
         // 初期データのロード
@@ -66,6 +61,17 @@ class ViewController: UIViewController {
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
+    }
+    
+    // コレクションビューの設定
+    private func setupCollectionView() {
+        // データソースの設定
+        collectionViewDataSource = CollectionViewDataSource(collectionView: collectionView)
+        
+        // スクロールデリゲートの設定
+        collectionView.delegate = self
+        
+        // フッターの登録は不要（データソース内で登録済み）
     }
     
     // 初期データをロード
@@ -85,17 +91,11 @@ class ViewController: UIViewController {
             activityIndicator.stopAnimating()
             
             // データをデータソースに設定
-            self.collectionViewDataSource.applyInitialSnapshots(
+            self.collectionViewDataSource.applyInitialData(
                 banners: data.banners,
                 categories: data.categories,
                 recommendedItems: data.recommendedItems
             )
-            
-            // セクションタイプを更新（おすすめセクションは2番目の位置に表示）
-            self.updateSectionTypes(with: data.categories, recommendationIndex: 2)
-            
-            // セクション構成を更新
-            self.collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
         } catch {
             // エラー処理
             activityIndicator.stopAnimating()
@@ -103,109 +103,6 @@ class ViewController: UIViewController {
             // エラーアラートを表示
             showErrorAlert(message: "データの取得に失敗しました: \(error.localizedDescription)")
         }
-    }
-    
-    // カテゴリ情報からセクションタイプを更新
-    private func updateSectionTypes(with categories: [Category], recommendationIndex: Int? = nil) {
-        print("🔄 セクションタイプを更新します: カテゴリ数 = \(categories.count)")
-        
-        // 現在のおすすめセクションのインデックスを保持
-        // (もしあれば、既存のレイアウト構造を維持するため)
-        let existingRecommendIndex = sectionTypes.firstIndex { type in
-            if case .recommendations = type { return true }
-            return false
-        }
-        
-        // バナーセクションがあるかどうかを確認
-        let hasBanner = sectionTypes.contains { type in
-            if case .banner = type { return true }
-            return false
-        }
-        
-        // セクションタイプを再構築
-        var newSectionTypes: [SectionType] = []
-        
-        // バナーがあれば追加
-        if hasBanner {
-            newSectionTypes.append(.banner)
-        } else {
-            // デフォルトのバナーセクションから開始
-            newSectionTypes.append(.banner)
-        }
-        
-        // カテゴリセクションを保持する配列
-        var categoryTypes: [SectionType] = []
-        
-        // 既存のカテゴリを維持
-        for type in sectionTypes {
-            if case .category = type {
-                categoryTypes.append(type)
-            }
-        }
-        
-        // 新しいカテゴリを末尾に追加
-        for category in categories {
-            // 既存のカテゴリと名前が重複していないか確認
-            let exists = categoryTypes.contains { type in
-                if case .category(let existingCategory) = type, existingCategory.name == category.name {
-                    return true
-                }
-                return false
-            }
-            
-            // 重複していない場合のみ追加
-            if !exists {
-                categoryTypes.append(.category(category))
-            }
-        }
-        
-        // カテゴリセクションを全て追加
-        newSectionTypes.append(contentsOf: categoryTypes)
-        
-        // おすすめセクションを追加（既存の位置または指定位置に挿入、それ以外は末尾に追加）
-        let targetIndex = existingRecommendIndex ?? recommendationIndex
-        
-        if let index = targetIndex, index > 0, index < newSectionTypes.count {
-            // 指定または既存の位置が有効な場合、その位置に挿入
-            newSectionTypes.insert(.recommendations, at: index)
-        } else {
-            // 位置指定がない場合は末尾に追加
-            newSectionTypes.append(.recommendations)
-        }
-        
-        // 新しいセクションタイプを保存
-        sectionTypes = newSectionTypes
-        
-        print("✅ セクションタイプを更新しました: 合計 \(sectionTypes.count)セクション")
-        
-        // レイアウトを更新
-        collectionView.collectionViewLayout = CollectionViewLayoutFactory.createCompositionalLayout(sectionTypes: sectionTypes)
-    }
-    
-    // セクションタイプの設定
-    private func setupSectionTypes() {
-        // 初期化時は空のセクションタイプのリストを作成
-        // 実際のデータはloadInitialDataで取得してから設定する
-        sectionTypes = []
-    }
-    
-    // コレクションビューの設定
-    private func setupCollectionView() {
-        // コレクションビューのレイアウト設定
-        collectionView.collectionViewLayout = UICollectionViewFlowLayout()
-        
-        // データソースの設定
-        collectionViewDataSource = CollectionViewDataSource(collectionView: collectionView)
-        
-        // スクロールデリゲートの設定
-        collectionView.delegate = self
-        
-        // フッターの登録（次ページ読み込み用のインジケーター）
-        collectionView.register(
-            LoadingFooterView.self,
-            forSupplementaryViewOfKind: UICollectionView.elementKindSectionFooter,
-            withReuseIdentifier: "LoadingFooter"
-        )
     }
     
     // エラーアラートを表示
@@ -224,86 +121,7 @@ class ViewController: UIViewController {
         present(alert, animated: true)
     }
     
-    /// 特定のカテゴリを更新する
-    /// - Parameter categories: 更新するカテゴリの配列
-    func updateCategories(_ categories: [Category]) {
-        // カテゴリを更新 - 古いデータを保持せず完全に置き換える
-        collectionViewDataSource.replaceAllCategories(categories, animate: true)
-        
-        // セクションタイプを新しいカテゴリで再構築
-        updateSectionTypes(with: categories)
-        
-        // セクション構成を更新
-        collectionViewDataSource.updateSectionConfiguration(sectionTypes: self.sectionTypes)
-    }
-    
-    /// 既存のカテゴリを保持しつつ、新しいカテゴリを追加する
-    /// - Parameter categories: 追加するカテゴリの配列
-    func appendCategories(_ categories: [Category]) {
-        print("🔍 カテゴリを追加しています: \(categories.map { $0.name })")
-        
-        // カテゴリを追加 - 改良したappendCategoriesメソッドを使用
-        // これによりDataSourceが直接UIを更新する
-        collectionViewDataSource.appendCategories(categories, animate: true)
-        
-        // セクションタイプの配列も更新して整合性を保つ
-        updateSectionTypes(with: collectionViewDataSource.categories)
-        
-        print("✅ appendCategories完了: 現在のカテゴリ数 = \(collectionViewDataSource.categories.count)")
-    }
-    
-    // 既存のセクションタイプを保持しつつ、カテゴリのみを更新したセクションタイプを作成
-    private func createUpdatedSectionTypes(with newCategories: [Category]) -> [SectionType] {
-        var updatedTypes: [SectionType] = []
-        
-        // 元のセクションタイプの順序を維持しつつ、カテゴリ部分だけを更新
-        for type in sectionTypes {
-            switch type {
-            case .category(let existingCategory):
-                // 更新対象のカテゴリがあるか確認
-                if let updatedCategory = newCategories.first(where: { $0.name == existingCategory.name }) {
-                    // 名前が一致するカテゴリがあれば、更新されたカテゴリを使用
-                    updatedTypes.append(.category(updatedCategory))
-                } else {
-                    // それ以外の場合は既存のカテゴリをそのまま使用
-                    updatedTypes.append(type)
-                }
-            case .banner, .recommendations:
-                // バナーとおすすめはそのまま維持
-                updatedTypes.append(type)
-            }
-        }
-        
-        // 元のセクションタイプにない新しいカテゴリを追加
-        for newCategory in newCategories {
-            let exists = sectionTypes.contains { type in
-                if case .category(let cat) = type, cat.name == newCategory.name {
-                    return true
-                }
-                return false
-            }
-            
-            // 既存のセクションタイプにないカテゴリは追加
-            if !exists {
-                // おすすめセクションの前に追加するか、なければ最後に追加
-                if let recommendIndex = updatedTypes.firstIndex(where: { 
-                    if case .recommendations = $0 { return true }
-                    return false 
-                }) {
-                    updatedTypes.insert(.category(newCategory), at: recommendIndex)
-                } else {
-                    updatedTypes.append(.category(newCategory))
-                }
-            }
-        }
-        
-        // 更新されたセクションタイプを保存
-        self.sectionTypes = updatedTypes
-        
-        return updatedTypes
-    }
-    
-    /// 次のページのカテゴリを読み込む
+    // 次のページのカテゴリを読み込む
     private func loadNextPage() async {
         // すでに読み込み中か次のページがない場合は何もしない
         guard !isLoading, hasNextPage else { return }
@@ -343,15 +161,9 @@ class ViewController: UIViewController {
             
             // カテゴリ名の確認（デバッグ用）
             print("✅ ページ \(currentPage) のデータ取得成功: \(result.categories.count)件")
-            print("📊 既存のカテゴリ: \(self.collectionViewDataSource.categories.map { $0.name })")
-            print("➕ 追加するカテゴリ: \(result.categories.map { $0.name })")
             
             // カテゴリを追加
-            appendCategories(result.categories)
-            
-            // デバッグ用ログ
-            print("📝 ページ \(currentPage) 読み込み完了: 現在 \(self.collectionViewDataSource.categories.count)件")
-            print("🔄 更新後のセクション: \(self.sectionTypes.count)件")
+            collectionViewDataSource.appendCategories(result.categories, animate: true)
             
         } catch {
             // エラー処理
@@ -373,9 +185,12 @@ class ViewController: UIViewController {
             }
             
             // フッタービューの更新
-            if let footerView = self.collectionView.visibleSupplementaryViews(ofKind: UICollectionView.elementKindSectionFooter).first as? LoadingFooterView {
-                footerView.setLoading(visible)
-            }
+            // LoadingFooterViewの型は使用せず、視覚的なフィードバックのみ提供
+            print("フッタービューの表示状態を更新: \(visible)")
+            
+            // カスタムクラスの型情報がないため、フッタービューの視覚的な更新は
+            // CollectionViewDataSourceに任せる処理に変更
+            self.collectionViewDataSource.updateFooterLoadingState(visible)
         }
     }
 }
@@ -432,40 +247,6 @@ extension ViewController: UICollectionViewDelegate {
 extension Collection {
     subscript(safe index: Index) -> Element? {
         return indices.contains(index) ? self[index] : nil
-    }
-}
-
-// ページング用のフッタービュー
-class LoadingFooterView: UICollectionReusableView {
-    private let activityIndicator = UIActivityIndicatorView(style: .medium)
-    
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        setupView()
-    }
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setupView()
-    }
-    
-    private func setupView() {
-        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(activityIndicator)
-        
-        NSLayoutConstraint.activate([
-            activityIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
-            activityIndicator.centerYAnchor.constraint(equalTo: centerYAnchor)
-        ])
-    }
-    
-    func setLoading(_ isLoading: Bool) {
-        print("🔄 フッターのローディング状態を変更: \(isLoading)")
-        if isLoading {
-            activityIndicator.startAnimating()
-        } else {
-            activityIndicator.stopAnimating()
-        }
     }
 }
 

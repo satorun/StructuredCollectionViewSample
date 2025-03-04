@@ -7,6 +7,9 @@
 
 import UIKit
 
+// カスタムセルのimport
+// 注意: 実際のプロジェクトでは、モジュール構造に応じて適切なimport文を使用してください
+
 /// UICollectionViewDiffableDataSourceの設定と管理を担当するクラス
 class CollectionViewDataSource {
     
@@ -32,32 +35,53 @@ class CollectionViewDataSource {
     /// おすすめアイテムのリスト
     private var recommendedItems: [Item] = []
     
+    /// セクションタイプを保持する配列
+    private var sectionTypes: [SectionType] = []
+    
+    /// コレクションビューの参照
+    private weak var collectionView: UICollectionView?
+    
+    /// デフォルトのおすすめセクションの位置（nil = 最後）
+    private let defaultRecommendationIndex: Int? = 2
+    
     /// 指定されたコレクションビューに対してデータソースを設定
     /// - Parameter collectionView: 設定対象のコレクションビュー
     init(collectionView: UICollectionView) {
+        self.collectionView = collectionView
         configureDataSource(collectionView: collectionView)
+        
+        // 初期レイアウト
+        collectionView.collectionViewLayout = UICollectionViewFlowLayout()
     }
     
     /// データソースを設定
     /// - Parameter collectionView: 設定対象のコレクションビュー
     private func configureDataSource(collectionView: UICollectionView) {
-        registerCells(collectionView: collectionView)
+        registerCells()
         configureCellProvider(collectionView: collectionView)
-        configureHeaderProvider()
+        configureSupplementaryViewProvider()
     }
     
     /// セルとヘッダーを登録
     /// - Parameter collectionView: 設定対象のコレクションビュー
-    private func registerCells(collectionView: UICollectionView) {
-        // セルの登録
-        collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.subCategory.rawValue)
-        collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.item.rawValue)
-        collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.banner.rawValue)
+    private func registerCells() {
+        // 型安全なセル登録の代わりに文字列ベースの登録を使用
+        collectionView?.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.subCategory.rawValue)
+        collectionView?.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.item.rawValue)
+        collectionView?.register(UICollectionViewCell.self, forCellWithReuseIdentifier: CellReuseID.banner.rawValue)
         
-        // ヘッダーの登録
-        collectionView.register(UICollectionReusableView.self,
-                               forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader,
-                               withReuseIdentifier: "HeaderView")
+        // ヘッダーとフッターの登録
+        collectionView?.register(
+            UICollectionReusableView.self,
+            forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader,
+            withReuseIdentifier: "SectionHeaderView"
+        )
+        
+        collectionView?.register(
+            UICollectionReusableView.self,
+            forSupplementaryViewOfKind: UICollectionView.elementKindSectionFooter,
+            withReuseIdentifier: "LoadingFooterView"
+        )
     }
     
     /// セルプロバイダーの設定
@@ -79,143 +103,191 @@ class CollectionViewDataSource {
         }
     }
     
-    /// サブカテゴリセルの構成
+    /// サブカテゴリセルの設定
     /// - Parameters:
     ///   - collectionView: コレクションビュー
     ///   - indexPath: インデックスパス
     ///   - subCategory: 表示するサブカテゴリ
-    /// - Returns: 設定されたセル
+    /// - Returns: 設定済みのセル
     private func configureSubCategoryCell(collectionView: UICollectionView, indexPath: IndexPath, subCategory: SubCategory) -> UICollectionViewCell? {
-        guard let cell = collectionView.dequeueReusableCell(
+        let cell = collectionView.dequeueReusableCell(
             withReuseIdentifier: CellReuseID.subCategory.rawValue,
-            for: indexPath) as? UICollectionViewCell else {
-                return nil
-        }
+            for: indexPath)
         
-        // サブカテゴリセルの内容を設定 - タイトルスタイルに変更
-        var config = UIListContentConfiguration.subtitleCell()
-        config.text = subCategory.name
-        config.secondaryText = "\(subCategory.items.count)個のアイテム"
-        config.textProperties.font = UIFont.boldSystemFont(ofSize: 18)
-        config.textProperties.color = UIColor.darkText
-        config.secondaryTextProperties.font = UIFont.systemFont(ofSize: 14)
-        config.secondaryTextProperties.color = UIColor.systemGray
+        // セルの設定
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
         
-        // 左側のインデントを追加してタイトル感を強調
-        config.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12)
+        // タイトルラベルの設定
+        let titleLabel = UILabel()
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = UIFont.boldSystemFont(ofSize: 16)
+        titleLabel.textColor = .darkText
+        titleLabel.text = subCategory.name
         
-        cell.contentConfiguration = config
+        // サブタイトルラベルの設定
+        let subtitleLabel = UILabel()
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        subtitleLabel.font = UIFont.systemFont(ofSize: 12)
+        subtitleLabel.textColor = .gray
+        subtitleLabel.text = "\(subCategory.items.count)個のアイテム"
+        
+        // スタックビューの設定
+        let stackView = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel])
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.axis = .vertical
+        stackView.spacing = 4
+        stackView.alignment = .leading
+        
+        cell.contentView.addSubview(stackView)
+        
+        // レイアウト制約の設定
+        NSLayoutConstraint.activate([
+            stackView.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 8),
+            stackView.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -8),
+            stackView.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
+            stackView.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -8)
+        ])
         
         return cell
     }
     
-    /// アイテムセルの構成
+    /// アイテムセルの設定
     /// - Parameters:
     ///   - collectionView: コレクションビュー
     ///   - indexPath: インデックスパス
     ///   - item: 表示するアイテム
-    /// - Returns: 設定されたセル
+    /// - Returns: 設定済みのセル
     private func configureItemCell(collectionView: UICollectionView, indexPath: IndexPath, item: Item) -> UICollectionViewCell? {
-        guard let cell = collectionView.dequeueReusableCell(
+        let cell = collectionView.dequeueReusableCell(
             withReuseIdentifier: CellReuseID.item.rawValue,
-            for: indexPath) as? UICollectionViewCell else {
-                return nil
-        }
+            for: indexPath)
         
-        // アイテムセルの内容を設定
-        var config = UIListContentConfiguration.cell()
-        config.text = item.title
-        config.textProperties.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        cell.contentConfiguration = config
+        // セルの設定
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
         cell.backgroundColor = item.color
         cell.layer.cornerRadius = 8
         cell.clipsToBounds = true
         
+        // タイトルラベルの設定
+        let titleLabel = UILabel()
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        titleLabel.textColor = .white
+        titleLabel.textAlignment = .center
+        titleLabel.numberOfLines = 2
+        titleLabel.text = item.title
+        
+        cell.contentView.addSubview(titleLabel)
+        
+        // レイアウト制約の設定
+        NSLayoutConstraint.activate([
+            titleLabel.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 8),
+            titleLabel.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -8),
+            titleLabel.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor)
+        ])
+        
         return cell
     }
     
-    /// バナーセルの構成
+    /// バナーセルの設定
     /// - Parameters:
     ///   - collectionView: コレクションビュー
     ///   - indexPath: インデックスパス
     ///   - banner: 表示するバナー
-    /// - Returns: 設定されたセル
+    /// - Returns: 設定済みのセル
     private func configureBannerCell(collectionView: UICollectionView, indexPath: IndexPath, banner: Banner) -> UICollectionViewCell? {
-        guard let cell = collectionView.dequeueReusableCell(
+        let cell = collectionView.dequeueReusableCell(
             withReuseIdentifier: CellReuseID.banner.rawValue,
-            for: indexPath) as? UICollectionViewCell else {
-                return nil
-        }
+            for: indexPath)
         
-        // バナーセルの内容を設定
-        var config = UIListContentConfiguration.cell()
-        config.text = banner.title
-        config.textProperties.font = UIFont.boldSystemFont(ofSize: 18)
-        config.textProperties.color = .white
-        cell.contentConfiguration = config
+        // セルの設定
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
         cell.backgroundColor = banner.backgroundColor
         cell.layer.cornerRadius = 12
         cell.clipsToBounds = true
         
+        // 影の設定
+        cell.layer.shadowColor = UIColor.black.cgColor
+        cell.layer.shadowOffset = CGSize(width: 0, height: 2)
+        cell.layer.shadowRadius = 4
+        cell.layer.shadowOpacity = 0.2
+        
+        // タイトルラベルの設定
+        let titleLabel = UILabel()
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = UIFont.boldSystemFont(ofSize: 18)
+        titleLabel.textColor = .white
+        titleLabel.textAlignment = .center
+        titleLabel.numberOfLines = 2
+        titleLabel.text = banner.title
+        
+        cell.contentView.addSubview(titleLabel)
+        
+        // レイアウト制約の設定
+        NSLayoutConstraint.activate([
+            titleLabel.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+            titleLabel.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor)
+        ])
+        
         return cell
     }
     
-    /// ヘッダープロバイダーの設定
-    private func configureHeaderProvider() {
-        dataSource.supplementaryViewProvider = { [weak self]
-            (collectionView: UICollectionView, kind: String, indexPath: IndexPath) -> UICollectionReusableView? in
+    /// 補助ビュー（ヘッダーとフッター）のプロバイダーを設定
+    private func configureSupplementaryViewProvider() {
+        dataSource.supplementaryViewProvider = { [weak self] (collectionView, kind, indexPath) -> UICollectionReusableView? in
+            guard let self = self else { return nil }
             
-            // ヘッダービューの作成
             if kind == UICollectionView.elementKindSectionHeader {
-                let headerView = collectionView.dequeueReusableSupplementaryView(
-                    ofKind: kind,
-                    withReuseIdentifier: "HeaderView",
-                    for: indexPath
-                )
-                
-                // セクションのタイトルを取得
-                if let sectionIdentifier = self?.dataSource.sectionIdentifier(for: indexPath.section) {
-                    self?.configureHeader(headerView: headerView, for: sectionIdentifier)
-                }
-                
-                return headerView
-            }
-            
-            // フッタービューの作成
-            if kind == UICollectionView.elementKindSectionFooter {
+                return self.configureHeaderView(collectionView: collectionView, indexPath: indexPath)
+            } else if kind == UICollectionView.elementKindSectionFooter {
                 return collectionView.dequeueReusableSupplementaryView(
                     ofKind: kind,
-                    withReuseIdentifier: "LoadingFooter",
-                    for: indexPath
-                )
+                    withReuseIdentifier: "LoadingFooterView",
+                    for: indexPath)
             }
             
             return nil
         }
     }
     
-    /// ヘッダービューを設定
+    /// ヘッダービューの設定
     /// - Parameters:
-    ///   - headerView: 設定対象のヘッダービュー
-    ///   - section: セクション情報
-    private func configureHeader(headerView: UICollectionReusableView, for section: Section) {
-        // 既存のサブビューをクリア
+    ///   - collectionView: コレクションビュー
+    ///   - indexPath: インデックスパス
+    /// - Returns: 設定済みのヘッダービュー
+    private func configureHeaderView(collectionView: UICollectionView, indexPath: IndexPath) -> UICollectionReusableView? {
+        let headerView = collectionView.dequeueReusableSupplementaryView(
+            ofKind: UICollectionView.elementKindSectionHeader,
+            withReuseIdentifier: "SectionHeaderView",
+            for: indexPath)
+        
+        // ヘッダービューの設定
         headerView.subviews.forEach { $0.removeFromSuperview() }
         
-        // ヘッダーにラベルを追加
-        let label = UILabel()
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = UIFont.boldSystemFont(ofSize: 18)
-        label.text = section.title
+        // セクションタイトルの取得
+        guard let section = dataSource.sectionIdentifier(for: indexPath.section) else {
+            return headerView
+        }
         
-        headerView.addSubview(label)
+        // タイトルラベルの設定
+        let titleLabel = UILabel()
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = UIFont.boldSystemFont(ofSize: 20)
+        titleLabel.textColor = .darkText
+        titleLabel.text = section.title
         
+        headerView.addSubview(titleLabel)
+        
+        // レイアウト制約の設定
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            label.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
-            label.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 8),
-            label.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8)
+            titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 8),
+            titleLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8)
         ])
+        
+        return headerView
     }
     
     /// 初期データをロード
@@ -223,30 +295,114 @@ class CollectionViewDataSource {
     ///   - banners: 表示するバナーの配列
     ///   - categories: 表示するカテゴリの配列
     ///   - recommendedItems: 表示するおすすめアイテムの配列
-    func applyInitialSnapshots(banners: [Banner], categories: [Category], recommendedItems: [Item]) {
+    func applyInitialData(banners: [Banner], categories: [Category], recommendedItems: [Item]) {
         // 受け取ったデータを保存
         self.banners = banners
         self.categories = categories
         self.recommendedItems = recommendedItems
         
-        // ※注意: このメソッドを呼び出した後、
-        // ViewControllerから updateSectionConfiguration を呼び出して
-        // 実際のセクションタイプとその順序を設定する必要があります
+        // セクションタイプを更新
+        updateSectionTypes(with: categories, recommendationIndex: defaultRecommendationIndex)
+        
+        // UIを更新
+        updateSections(animate: true)
+        
+        // レイアウトを更新
+        updateLayout()
+    }
+    
+    /// カテゴリ情報からセクションタイプを更新
+    /// - Parameters:
+    ///   - categories: カテゴリ配列
+    ///   - recommendationIndex: おすすめセクションの表示位置（nil=末尾）
+    private func updateSectionTypes(with categories: [Category], recommendationIndex: Int? = nil) {
+        print("🔄 セクションタイプを更新します: カテゴリ数 = \(categories.count)")
+        
+        // 現在のおすすめセクションのインデックスを保持
+        // (もしあれば、既存のレイアウト構造を維持するため)
+        let existingRecommendIndex = sectionTypes.firstIndex { type in
+            if case .recommendations = type { return true }
+            return false
+        }
+        
+        // バナーセクションがあるかどうかを確認
+        let hasBanner = sectionTypes.contains { type in
+            if case .banner = type { return true }
+            return false
+        }
+        
+        // セクションタイプを再構築
+        var newSectionTypes: [SectionType] = []
+        
+        // バナーがあれば追加
+        if hasBanner {
+            newSectionTypes.append(.banner)
+        } else {
+            // デフォルトのバナーセクションから開始
+            newSectionTypes.append(.banner)
+        }
+        
+        // カテゴリセクションを保持する配列
+        var categoryTypes: [SectionType] = []
+        
+        // 既存のカテゴリを維持
+        for type in sectionTypes {
+            if case .category = type {
+                categoryTypes.append(type)
+            }
+        }
+        
+        // 新しいカテゴリを末尾に追加
+        for category in categories {
+            // 既存のカテゴリと名前が重複していないか確認
+            let exists = categoryTypes.contains { type in
+                if case .category(let existingCategory) = type, existingCategory.name == category.name {
+                    return true
+                }
+                return false
+            }
+            
+            // 重複していない場合のみ追加
+            if !exists {
+                categoryTypes.append(.category(category))
+            }
+        }
+        
+        // カテゴリセクションを全て追加
+        newSectionTypes.append(contentsOf: categoryTypes)
+        
+        // おすすめセクションを追加（既存の位置または指定位置に挿入、それ以外は末尾に追加）
+        let targetIndex = existingRecommendIndex ?? recommendationIndex
+        
+        if let index = targetIndex, index > 0, index < newSectionTypes.count {
+            // 指定または既存の位置が有効な場合、その位置に挿入
+            newSectionTypes.insert(.recommendations, at: index)
+        } else {
+            // 位置指定がない場合は末尾に追加
+            newSectionTypes.append(.recommendations)
+        }
+        
+        // 新しいセクションタイプを保存
+        sectionTypes = newSectionTypes
+        
+        print("✅ セクションタイプを更新しました: 合計 \(sectionTypes.count)セクション")
+    }
+    
+    /// レイアウトを更新
+    private func updateLayout() {
+        // レイアウトを更新
+        collectionView?.collectionViewLayout = CollectionViewLayoutFactory.createCompositionalLayout(sectionTypes: sectionTypes)
     }
     
     /// セクションとアイテムを更新する
     /// - Parameters:
     ///   - animate: アニメーションの有無
-    ///   - sectionTypes: 表示するセクションタイプの配列（nilの場合は既存の順序を維持）
-    private func updateSections(animate: Bool = false, sectionTypes: [SectionType]? = nil) {
+    private func updateSections(animate: Bool = false) {
         // 新しいスナップショットを作成
         var snapshot = NSDiffableDataSourceSnapshot<Section, CellItem>()
         
-        // 渡されたセクションタイプがある場合はそれを使用し、なければデフォルト順序で表示
-        let sectionsToDisplay = sectionTypes ?? []
-        
         // セクションタイプに基づいてセクションとアイテムを追加
-        for sectionType in sectionsToDisplay {
+        for sectionType in sectionTypes {
             switch sectionType {
             case .banner:
                 if !banners.isEmpty {
@@ -290,76 +446,6 @@ class CollectionViewDataSource {
         dataSource.apply(snapshot, animatingDifferences: animate)
     }
     
-    /// セクションの構成を更新
-    /// - Parameters:
-    ///   - sectionTypes: 表示するセクションタイプの配列
-    ///   - animate: アニメーションの有無
-    func updateSectionConfiguration(sectionTypes: [SectionType], animate: Bool = true) {
-        updateSections(animate: animate, sectionTypes: sectionTypes)
-    }
-
-    /// カテゴリを更新
-    /// - Parameters:
-    ///   - categories: 新しいカテゴリの配列
-    ///   - animate: アニメーションの有無
-    func reloadCategories(_ categories: [Category], animate: Bool = true) {
-        self.categories = categories
-        
-        // ※ このメソッドは updateSectionConfiguration から呼ばれることを想定
-        // そうでない場合は既存のセクション順序を維持
-        updateSections(animate: animate)
-    }
-    
-    /// カテゴリを更新して対応するセクションを更新する
-    /// - Parameters:
-    ///   - categories: 更新するカテゴリの配列
-    ///   - animate: アニメーションの有無
-    func updateCategories(_ categories: [Category], animate: Bool = true) {
-        // カテゴリの更新
-        for updatedCategory in categories {
-            // 既存のカテゴリを更新
-            if let index = self.categories.firstIndex(where: { $0.name == updatedCategory.name }) {
-                self.categories[index] = updatedCategory
-            } else {
-                // 存在しないカテゴリは追加
-                self.categories.append(updatedCategory)
-            }
-        }
-        
-        // 注意: この時点ではUIの更新は行わない
-        // ViewControllerが新しいsectionTypesを作成し、
-        // updateSectionConfigurationメソッドを呼び出す必要がある
-        
-        // すぐに更新したい場合は既存のスナップショットを使って部分的に更新することも可能
-        var snapshot = dataSource.snapshot()
-        
-        // 各セクションを個別に更新
-        for sectionIdentifier in snapshot.sectionIdentifiers {
-            if case .category(let existingCategory) = sectionIdentifier.type {
-                // 更新対象のカテゴリを探す
-                if let updatedCategory = categories.first(where: { $0.name == existingCategory.name }) {
-                    // カテゴリが見つかった場合、そのセクションのアイテムを削除して再追加
-                    let oldItems = snapshot.itemIdentifiers(inSection: sectionIdentifier)
-                    snapshot.deleteItems(oldItems)
-                    
-                    // サブカテゴリとアイテムを追加
-                    for subCategory in updatedCategory.subCategories {
-                        // サブカテゴリセルを追加
-                        let subCategoryItem = CellItem.subCategory(subCategory)
-                        snapshot.appendItems([subCategoryItem], toSection: sectionIdentifier)
-                        
-                        // アイテムを追加
-                        let itemCells = subCategory.items.map { CellItem.item($0, subCategory) }
-                        snapshot.appendItems(itemCells, toSection: sectionIdentifier)
-                    }
-                }
-            }
-        }
-        
-        // 更新されたスナップショットを適用
-        dataSource.apply(snapshot, animatingDifferences: animate)
-    }
-    
     /// すべてのカテゴリを新しいカテゴリで置き換える
     /// - Parameters:
     ///   - categories: 新しいカテゴリの配列
@@ -368,8 +454,14 @@ class CollectionViewDataSource {
         // カテゴリを完全に置き換え
         self.categories = categories
         
-        // 注意: ここでは更新は行わない
-        // ViewControllerがupdateSectionConfigurationを呼び出す必要がある
+        // セクションタイプを更新
+        updateSectionTypes(with: categories)
+        
+        // UIを更新
+        updateSections(animate: animate)
+        
+        // レイアウトを更新
+        updateLayout()
     }
     
     /// 既存のカテゴリを保持しつつ、新しいカテゴリを末尾に追加する
@@ -391,11 +483,14 @@ class CollectionViewDataSource {
         // 追加したカテゴリの情報をログに出力
         print("📦 カテゴリ追加: \(addedCategories.count)件を追加しました")
         
-        // 新しいセクションをスナップショットに追加
         if !addedCategories.isEmpty {
+            // セクションタイプを更新
+            updateSectionTypes(with: self.categories)
+            
+            // 新しいセクションをスナップショットに追加
             var snapshot = dataSource.snapshot()
             
-            // 新しいカテゴリ用のセクションを作成して追加（常に最後に追加）
+            // 新しいカテゴリ用のセクションを作成して追加
             for newCategory in addedCategories {
                 let newSection = Section(category: newCategory)
                 
@@ -417,6 +512,9 @@ class CollectionViewDataSource {
             // 更新されたスナップショットを適用
             print("🔄 新しいカテゴリ \(addedCategories.map { $0.name }) をUIに反映します")
             dataSource.apply(snapshot, animatingDifferences: animate)
+            
+            // レイアウトを更新
+            updateLayout()
         }
     }
     
@@ -436,5 +534,26 @@ class CollectionViewDataSource {
     func reloadRecommendedItems(_ items: [Item], animate: Bool = true) {
         self.recommendedItems = items
         updateSections(animate: animate)
+    }
+    
+    /// フッターのローディング状態を更新する
+    /// - Parameter isLoading: ロード中かどうか
+    func updateFooterLoadingState(_ isLoading: Bool) {
+        // 表示中のフッタービューを取得して状態を更新
+        if let collectionView = collectionView {
+            let footerViews = collectionView.visibleSupplementaryViews(ofKind: UICollectionView.elementKindSectionFooter)
+            for footerView in footerViews {
+                // LoadingFooterViewを型安全に使えないため、タグとプロパティで対応
+                if footerView.subviews.first is UIActivityIndicatorView {
+                    let indicator = footerView.subviews.first as? UIActivityIndicatorView
+                    if isLoading {
+                        indicator?.startAnimating()
+                    } else {
+                        indicator?.stopAnimating()
+                    }
+                    print("🔄 フッターのローディング状態を変更: \(isLoading)")
+                }
+            }
+        }
     }
 } 
