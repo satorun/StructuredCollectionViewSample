@@ -22,15 +22,38 @@ class CollectionViewLayoutFactory {
             
             // セクションタイプに基づいてレイアウトを選択
             let sectionType = sectionTypes[sectionIndex]
+            let section: NSCollectionLayoutSection
+            
             switch sectionType {
             case .banner:
-                return Self.createBannerSection()
+                section = Self.createBannerSection()
             case .recommendations:
-                return Self.createRecommendedItemsSection()
+                section = Self.createRecommendedItemsSection()
             case .category(let category):
                 // 動的なカテゴリレイアウトを使用
-                return Self.createNestedCategoryLayout(with: sectionType)
+                section = Self.createNestedCategoryLayout(with: sectionType)
             }
+            
+            // 最後のセクションにフッターを追加
+            if sectionIndex == sectionTypes.count - 1 {
+                let footerSize = NSCollectionLayoutSize(
+                    widthDimension: .fractionalWidth(1.0),
+                    heightDimension: .absolute(50)
+                )
+                
+                let footer = NSCollectionLayoutBoundarySupplementaryItem(
+                    layoutSize: footerSize,
+                    elementKind: UICollectionView.elementKindSectionFooter,
+                    alignment: .bottom
+                )
+                
+                // 既存のヘッダーがあれば追加し、なければ新規作成
+                var supplementaryItems = section.boundarySupplementaryItems
+                supplementaryItems.append(footer)
+                section.boundarySupplementaryItems = supplementaryItems
+            }
+            
+            return section
         }
         
         let config = UICollectionViewCompositionalLayoutConfiguration()

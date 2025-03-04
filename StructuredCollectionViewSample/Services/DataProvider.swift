@@ -50,6 +50,42 @@ class DataProvider {
         )
     }
     
+    /// ページ単位でカテゴリを取得する
+    /// - Parameters:
+    ///   - page: ページ番号（1から開始）
+    ///   - pageSize: 1ページあたりのカテゴリ数
+    /// - Returns: 取得したカテゴリの配列と次のページがあるかどうかの情報
+    func fetchCategories(page: Int, pageSize: Int = 2) async throws -> (categories: [Category], hasNextPage: Bool) {
+        // 非同期処理をシミュレート（実際のアプリではAPIリクエスト）
+        try await Task.sleep(nanoseconds: 1_000_000_000) // 1秒の遅延
+        
+        // ページングを簡略化する - 全カテゴリリストから指定ページのデータを取得する方式に変更
+        let allCategories = getAllCategories()
+        
+        // 配列全体のサイズを確認
+        let totalCategories = allCategories.count
+        
+        // ページングの計算
+        let startIndex = (page - 1) * pageSize
+        
+        // 範囲外のページリクエストの場合は空配列を返す
+        if startIndex >= totalCategories {
+            print("⚠️ ページ範囲外: startIndex(\(startIndex)) >= totalCategories(\(totalCategories))")
+            return (categories: [], hasNextPage: false)
+        }
+        
+        // 現在のページ用のカテゴリを抽出
+        let endIndex = min(startIndex + pageSize, totalCategories)
+        let pageCategories = Array(allCategories[startIndex..<endIndex])
+        
+        print("📊 ページング情報: ページ\(page) - \(startIndex)から\(endIndex-1)の\(pageCategories.count)件を返します")
+        
+        // 次のページがあるかどうかを判定
+        let hasNextPage = endIndex < totalCategories
+        
+        return (categories: pageCategories, hasNextPage: hasNextPage)
+    }
+    
     // MARK: - データ生成ヘルパーメソッド
     
     /// 初期バナーデータの作成
@@ -72,7 +108,21 @@ class DataProvider {
     /// 初期カテゴリデータの作成
     private func createInitialCategories() -> [Category] {
         // フルーツカテゴリ
-        let fruitSubs = [
+        let fruitCategory = createFruitCategory()
+        
+        // スポーツカテゴリ
+        let sportsCategory = createSportsCategory()
+        
+        // 旅行カテゴリ
+        let travelCategory = createTravelCategory()
+        
+        // 初期カテゴリのセットを返す
+        return [fruitCategory, sportsCategory, travelCategory]
+    }
+    
+    /// フルーツカテゴリの作成
+    private func createFruitCategory() -> Category {
+        let subCategories = [
             SubCategory(name: "国産フルーツ", items: [
                 Item(title: "りんご", color: .systemRed),
                 Item(title: "バナナ", color: .systemYellow)
@@ -83,8 +133,12 @@ class DataProvider {
             ])
         ]
         
-        // スポーツカテゴリ
-        let sportsSubs = [
+        return Category(name: "フルーツ", subCategories: subCategories)
+    }
+    
+    /// スポーツカテゴリの作成
+    private func createSportsCategory() -> Category {
+        let subCategories = [
             SubCategory(name: "ボールスポーツ", items: [
                 Item(title: "サッカー", color: .systemGreen),
                 Item(title: "野球", color: .systemBlue),
@@ -96,8 +150,12 @@ class DataProvider {
             ])
         ]
         
-        // 旅行カテゴリ
-        let travelSubs = [
+        return Category(name: "スポーツ", subCategories: subCategories)
+    }
+    
+    /// 旅行カテゴリの作成
+    private func createTravelCategory() -> Category {
+        let subCategories = [
             SubCategory(name: "国内旅行", items: [
                 Item(title: "京都", color: .systemRed),
                 Item(title: "北海道", color: .systemCyan),
@@ -110,18 +168,24 @@ class DataProvider {
             ])
         ]
         
-        // カテゴリを設定
-        return [
-            Category(name: "フルーツ", subCategories: fruitSubs),
-            Category(name: "スポーツ", subCategories: sportsSubs),
-            Category(name: "旅行", subCategories: travelSubs)
-        ]
+        return Category(name: "旅行", subCategories: subCategories)
     }
     
     /// 更新カテゴリデータの作成
     private func createUpdatedCategories() -> [Category] {
         // 家電カテゴリ
-        let applianceSubs = [
+        let applianceCategory = createApplianceCategory()
+        
+        // 季節カテゴリ
+        let seasonCategory = createSeasonCategory()
+        
+        // 更新カテゴリのセットを返す
+        return [applianceCategory, seasonCategory]
+    }
+    
+    /// 家電カテゴリの作成
+    private func createApplianceCategory() -> Category {
+        let subCategories = [
             SubCategory(name: "キッチン家電", items: [
                 Item(title: "冷蔵庫", color: .systemBlue),
                 Item(title: "電子レンジ", color: .systemGray),
@@ -134,8 +198,12 @@ class DataProvider {
             ])
         ]
         
-        // 季節カテゴリ
-        let seasonSubs = [
+        return Category(name: "家電製品", subCategories: subCategories)
+    }
+    
+    /// 季節カテゴリの作成
+    private func createSeasonCategory() -> Category {
+        let subCategories = [
             SubCategory(name: "春", items: [
                 Item(title: "桜", color: .systemPink),
                 Item(title: "チューリップ", color: .systemRed)
@@ -150,11 +218,55 @@ class DataProvider {
             ])
         ]
         
-        // 新しいカテゴリを作成
-        return [
-            Category(name: "家電製品", subCategories: applianceSubs),
-            Category(name: "季節", subCategories: seasonSubs)
+        return Category(name: "季節", subCategories: subCategories)
+    }
+    
+    /// 追加のカテゴリデータを作成（3ページ目用）
+    private func createAdditionalCategories() -> [Category] {
+        // 本カテゴリ
+        let bookCategory = createBookCategory()
+        
+        // ペットカテゴリ
+        let petCategory = createPetCategory()
+        
+        // 追加カテゴリのセットを返す
+        return [bookCategory, petCategory]
+    }
+    
+    /// 書籍カテゴリの作成
+    private func createBookCategory() -> Category {
+        let subCategories = [
+            SubCategory(name: "ビジネス書", items: [
+                Item(title: "マーケティング入門", color: .systemBlue),
+                Item(title: "リーダーシップ論", color: .systemRed),
+                Item(title: "投資の基本", color: .systemGreen)
+            ]),
+            SubCategory(name: "小説", items: [
+                Item(title: "ミステリー", color: .systemPurple),
+                Item(title: "SF", color: .systemTeal),
+                Item(title: "ファンタジー", color: .systemIndigo)
+            ])
         ]
+        
+        return Category(name: "本", subCategories: subCategories)
+    }
+    
+    /// ペットカテゴリの作成
+    private func createPetCategory() -> Category {
+        let subCategories = [
+            SubCategory(name: "犬", items: [
+                Item(title: "チワワ", color: .systemYellow),
+                Item(title: "柴犬", color: .systemOrange),
+                Item(title: "ゴールデンレトリバー", color: .systemBrown)
+            ]),
+            SubCategory(name: "猫", items: [
+                Item(title: "スコティッシュフォールド", color: .systemGray),
+                Item(title: "シャム猫", color: .systemBlue),
+                Item(title: "アメリカンショートヘア", color: .systemGreen)
+            ])
+        ]
+        
+        return Category(name: "ペット", subCategories: subCategories)
     }
     
     /// 初期おすすめアイテムの作成
@@ -176,6 +288,22 @@ class DataProvider {
             Item(title: "新発売商品", color: .systemGreen),
             Item(title: "割引商品", color: .systemBlue)
         ]
+    }
+    
+    /// すべてのカテゴリデータを順番に格納した配列を返す
+    private func getAllCategories() -> [Category] {
+        var allCategories: [Category] = []
+        
+        // 初期カテゴリ（ページ1用）
+        allCategories.append(contentsOf: createInitialCategories())
+        
+        // 追加カテゴリ（ページ2用）
+        allCategories.append(contentsOf: createUpdatedCategories())
+        
+        // さらに追加カテゴリ（ページ3用）
+        allCategories.append(contentsOf: createAdditionalCategories())
+        
+        return allCategories
     }
     
     /// データ取得エラー

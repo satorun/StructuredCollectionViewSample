@@ -162,41 +162,60 @@ class CollectionViewDataSource {
     
     /// ヘッダープロバイダーの設定
     private func configureHeaderProvider() {
-        dataSource.supplementaryViewProvider = { [weak self] (collectionView: UICollectionView, kind: String, indexPath: IndexPath) -> UICollectionReusableView? in
-            guard kind == UICollectionView.elementKindSectionHeader else { return nil }
+        dataSource.supplementaryViewProvider = { [weak self]
+            (collectionView: UICollectionView, kind: String, indexPath: IndexPath) -> UICollectionReusableView? in
             
-            let headerView = collectionView.dequeueReusableSupplementaryView(
-                ofKind: kind,
-                withReuseIdentifier: "HeaderView",
-                for: indexPath)
-            
-            // 既存のサブビューをクリア
-            headerView.subviews.forEach { $0.removeFromSuperview() }
-            
-            // ヘッダーにラベルを追加
-            let label = UILabel()
-            label.translatesAutoresizingMaskIntoConstraints = false
-            label.font = UIFont.boldSystemFont(ofSize: 18)
-            
-            // 現在のスナップショットからセクションを取得
-            guard let sections = self?.dataSource.snapshot().sectionIdentifiers,
-                  indexPath.section < sections.count else {
-                label.text = "不明なセクション"
+            // ヘッダービューの作成
+            if kind == UICollectionView.elementKindSectionHeader {
+                let headerView = collectionView.dequeueReusableSupplementaryView(
+                    ofKind: kind,
+                    withReuseIdentifier: "HeaderView",
+                    for: indexPath
+                )
+                
+                // セクションのタイトルを取得
+                if let sectionIdentifier = self?.dataSource.sectionIdentifier(for: indexPath.section) {
+                    self?.configureHeader(headerView: headerView, for: sectionIdentifier)
+                }
+                
                 return headerView
             }
             
-            label.text = sections[indexPath.section].title
-            headerView.addSubview(label)
+            // フッタービューの作成
+            if kind == UICollectionView.elementKindSectionFooter {
+                return collectionView.dequeueReusableSupplementaryView(
+                    ofKind: kind,
+                    withReuseIdentifier: "LoadingFooter",
+                    for: indexPath
+                )
+            }
             
-            NSLayoutConstraint.activate([
-                label.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-                label.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
-                label.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 8),
-                label.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8)
-            ])
-            
-            return headerView
+            return nil
         }
+    }
+    
+    /// ヘッダービューを設定
+    /// - Parameters:
+    ///   - headerView: 設定対象のヘッダービュー
+    ///   - section: セクション情報
+    private func configureHeader(headerView: UICollectionReusableView, for section: Section) {
+        // 既存のサブビューをクリア
+        headerView.subviews.forEach { $0.removeFromSuperview() }
+        
+        // ヘッダーにラベルを追加
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = UIFont.boldSystemFont(ofSize: 18)
+        label.text = section.title
+        
+        headerView.addSubview(label)
+        
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            label.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            label.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 8),
+            label.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -8)
+        ])
     }
     
     /// 初期データをロード
@@ -359,15 +378,46 @@ class CollectionViewDataSource {
     ///   - animate: アニメーションの有無
     func appendCategories(_ categories: [Category], animate: Bool = true) {
         // 既存のカテゴリと重複しない新しいカテゴリのみを追加
+        var addedCategories: [Category] = []
+        
         for newCategory in categories {
             let exists = self.categories.contains { $0.name == newCategory.name }
             if !exists {
                 self.categories.append(newCategory)
+                addedCategories.append(newCategory)
             }
         }
         
-        // 注意: ここでは更新は行わない
-        // ViewControllerがupdateSectionConfigurationを呼び出す必要がある
+        // 追加したカテゴリの情報をログに出力
+        print("📦 カテゴリ追加: \(addedCategories.count)件を追加しました")
+        
+        // 新しいセクションをスナップショットに追加
+        if !addedCategories.isEmpty {
+            var snapshot = dataSource.snapshot()
+            
+            // 新しいカテゴリ用のセクションを作成して追加（常に最後に追加）
+            for newCategory in addedCategories {
+                let newSection = Section(category: newCategory)
+                
+                // 常に最後にセクションを追加
+                snapshot.appendSections([newSection])
+                
+                // サブカテゴリとアイテムをセルアイテムとして追加
+                for subCategory in newCategory.subCategories {
+                    // サブカテゴリのセルを追加
+                    let subCategoryCell = CellItem.subCategory(subCategory)
+                    snapshot.appendItems([subCategoryCell], toSection: newSection)
+                    
+                    // そのサブカテゴリに含まれるアイテムを追加
+                    let itemCells = subCategory.items.map { CellItem.item($0, subCategory) }
+                    snapshot.appendItems(itemCells, toSection: newSection)
+                }
+            }
+            
+            // 更新されたスナップショットを適用
+            print("🔄 新しいカテゴリ \(addedCategories.map { $0.name }) をUIに反映します")
+            dataSource.apply(snapshot, animatingDifferences: animate)
+        }
     }
     
     /// バナーをリロードする
