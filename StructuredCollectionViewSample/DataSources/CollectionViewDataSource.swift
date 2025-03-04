@@ -106,13 +106,6 @@ class CollectionViewDataSource {
         
         cell.contentConfiguration = config
         
-        
-        // 選択時の背景色
-        let selectedBackgroundView = UIView()
-        selectedBackgroundView.backgroundColor = UIColor.systemGray6
-        selectedBackgroundView.layer.cornerRadius = 10
-        cell.selectedBackgroundView = selectedBackgroundView
-        
         return cell
     }
     
@@ -137,28 +130,6 @@ class CollectionViewDataSource {
         cell.backgroundColor = item.color
         cell.layer.cornerRadius = 8
         cell.clipsToBounds = true
-        
-        // おすすめセクションに表示されるアイテムかどうかを判断
-        // この例では単純に判断できないため、
-        // より良い実装では、CellItemにセクション情報を持たせるなどの工夫が必要
-        let sectionIdentifiers = dataSource.snapshot().sectionIdentifiers
-        if indexPath.section < sectionIdentifiers.count {
-            let section = sectionIdentifiers[indexPath.section]
-            if case .recommendations = section.type {
-                // おすすめアイテムの場合は星マークなどの装飾を追加
-                let starView = UIImageView(image: UIImage(systemName: "star.fill"))
-                starView.tintColor = .systemYellow
-                starView.translatesAutoresizingMaskIntoConstraints = false
-                cell.contentView.addSubview(starView)
-                
-                NSLayoutConstraint.activate([
-                    starView.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 8),
-                    starView.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -8),
-                    starView.widthAnchor.constraint(equalToConstant: 20),
-                    starView.heightAnchor.constraint(equalToConstant: 20)
-                ])
-            }
-        }
         
         return cell
     }
