@@ -29,8 +29,25 @@ class ViewController: UIViewController {
         // データソースの設定
         collectionViewDataSource = CollectionViewDataSource(collectionView: collectionView)
         
+        // スクロールデリゲートの設定
+        collectionView.delegate = self
+        
         // 初期データをロード
         collectionViewDataSource.applyInitialSnapshots()
+    }
+    
+    // おすすめセクションのインデックスを取得
+    private func findRecommendationSectionIndex() -> Int? {
+        let snapshot = collectionViewDataSource.dataSource.snapshot()
+        
+        // おすすめセクションを探す
+        for (index, section) in snapshot.sectionIdentifiers.enumerated() {
+            if case .recommendations = section.type {
+                return index
+            }
+        }
+        
+        return nil
     }
     
     // ナビゲーションバーの設定
@@ -97,6 +114,20 @@ class ViewController: UIViewController {
         ]
         
         collectionViewDataSource.reloadCategories(categories)
+    }
+}
+
+// MARK: - UICollectionViewDelegate
+extension ViewController: UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        // 必要に応じて実装
+    }
+}
+
+// 配列の安全なインデックスアクセス用拡張
+extension Collection {
+    subscript(safe index: Index) -> Element? {
+        return indices.contains(index) ? self[index] : nil
     }
 }
 

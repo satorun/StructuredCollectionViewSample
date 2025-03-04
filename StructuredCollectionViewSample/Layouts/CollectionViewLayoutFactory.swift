@@ -88,31 +88,35 @@ class CollectionViewLayoutFactory {
         return section
     }
     
-    /// おすすめアイテムセクションのレイアウトを作成（水平スクロールカルーセル）
+    /// おすすめアイテムセクションのレイアウトを作成（ページングスタイル - カテゴリセクションに合わせたスタイル）
     /// - Returns: NSCollectionLayoutSection
     static func createRecommendedItemsSection() -> NSCollectionLayoutSection {
-        // アイテムのレイアウト
+        // アイテムのレイアウト（カテゴリセクションと同じサイズに）
         let itemSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0),
-            heightDimension: .fractionalHeight(1.0)
+            widthDimension: .fractionalWidth(0.5),  // グループ内で50%幅（2つで1グループ）
+            heightDimension: .fractionalHeight(1.0) // グループの高さに合わせる
         )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
-        item.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
+        item.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
         
-        // アイテムグループのレイアウト
+        // 2アイテムを1グループとして扱う
         let groupSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(0.4),
-            heightDimension: .absolute(120)
+            widthDimension: .fractionalWidth(0.9),  // 画面幅の90%（カテゴリセクションに近い幅）
+            heightDimension: .absolute(100)         // カテゴリセクションと同じ高さ
         )
         let group = NSCollectionLayoutGroup.horizontal(
             layoutSize: groupSize,
-            subitems: [item]
+            subitem: item,
+            count: 2  // 1グループに2アイテム
         )
         
-        // おすすめセクション定義（連続スクロール）
+        // おすすめセクション定義
         let section = NSCollectionLayoutSection(group: group)
-        section.orthogonalScrollingBehavior = .continuousGroupLeadingBoundary
-        section.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
+        section.orthogonalScrollingBehavior = .groupPaging  // 左端から始まるページング
+        section.interGroupSpacing = 0  // グループ間の間隔
+        
+        // セクション余白設定（左端の余白を減らす）
+        section.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 8, bottom: 12, trailing: 8)
         
         // ヘッダー定義
         let headerSize = NSCollectionLayoutSize(
